@@ -15,6 +15,7 @@ import {
 import { getCurrentLocation } from "@/utils/geoLocation";
 import { getCityFromCoords } from "@/services/cityService";
 import { mapToWeatherAlerts, mapToWeatherData } from "@/utils/mapWeather";
+import { AppBackground } from "@/components/AppBackground";
 
 const Index = () => {
   const [alerts, setAlerts] = useState(mockAlerts);
@@ -85,13 +86,23 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div
+      className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5"
+      style={{
+        backgroundImage:
+          "url(https://media.istockphoto.com/id/108329641/photo/cold-day-in-chicago.jpg?s=612x612&w=0&k=20&c=qDG1bKanlQG8bMZ3XdmPA3gDwOFDg-T9Kuuc14ue-FM=)",
+        backgroundSize: "cover", // Make sure it covers the entire area
+        backgroundPosition: "center", // Center the image
+        backgroundRepeat: "no-repeat", // Prevent tiling
+      }}
+    >
       {/* Decorative background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-accent/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
       </div>
 
+       {/* <div className="fixed inset-0 -z-10 bg-white/30 backdrop-blur-lg" /> */}
       <div className="relative z-10">
         {/* Header */}
         <header className="border-b border-border/50 backdrop-blur-md bg-background/80 sticky top-0 z-50">
@@ -107,7 +118,7 @@ const Index = () => {
                 </div>
                 <div>
                   <h1 className="font-display text-xl font-bold text-foreground">
-                    WeatherCompare
+                    Pocket Weather
                   </h1>
                   <p className="text-xs text-muted-foreground">
                     Compare weather across cities
@@ -179,7 +190,11 @@ const Index = () => {
                       key={city.id}
                       weather={city}
                       // onRemove={handleRemoveCity}
-                      onRemove={!weather.isCurrentLocation ? handleRemoveCity : undefined}
+                      onRemove={
+                        !weather.isCurrentLocation
+                          ? handleRemoveCity
+                          : undefined
+                      }
                     />
                   ))}
                 </AnimatePresence>
