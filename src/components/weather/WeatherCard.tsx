@@ -19,6 +19,8 @@ export const WeatherCard = ({
   onSelect,
   compact = false 
 }: WeatherCardProps) => {
+  console.log(weather.condition);
+  
   return (
     <motion.div
       layout
@@ -37,10 +39,11 @@ export const WeatherCard = ({
       {/* Background gradient based on condition */}
       <div className={cn(
         'absolute inset-0 opacity-10 transition-opacity duration-300 group-hover:opacity-20',
-        weather.condition === 'sunny' && 'gradient-sunset',
-        weather.condition === 'rainy' && 'gradient-sky',
-        weather.condition === 'stormy' && 'gradient-storm',
-        (weather.condition === 'cloudy' || weather.condition === 'partly-cloudy') && 'bg-muted',
+        weather.condition === 'clear' && 'gradient-sunset',
+        (weather.condition === 'rain' || weather.condition === 'drizzle' ) && 'gradient-sky',
+        weather.condition === 'thunderstorm' && 'gradient-storm',
+        (weather.condition === 'clouds' || weather.condition === 'mist' || weather.condition === 'fog' || weather.condition === 'haze' || weather.condition === 'smoke'  ) && 'bg-muted',
+        (weather.condition === 'snow' || weather.condition === 'sleet') && 'gradient-snow'
       )} />
 
       {/* Remove button */}

@@ -37,6 +37,8 @@ const severityConfig = {
 };
 
 export const WeatherAlerts = ({ alerts, selectedCities, onDismiss }: WeatherAlertsProps) => {
+  console.log(alerts);
+  
   const relevantAlerts = alerts.filter((alert) =>
     alert.cities.some((city) => selectedCities.includes(city))
   );

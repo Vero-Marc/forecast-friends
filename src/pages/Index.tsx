@@ -1,42 +1,88 @@
-import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Cloud, MapPin, RefreshCw } from 'lucide-react';
-import { WeatherCard } from '@/components/weather/WeatherCard';
-import { CitySearch } from '@/components/weather/CitySearch';
-import { WeatherAlerts } from '@/components/weather/WeatherAlerts';
-import { WeatherAdvice } from '@/components/weather/WeatherAdvice';
-import { WeatherComparison } from '@/components/weather/WeatherComparison';
-import { mockCities, mockAlerts } from '@/data/mockWeather';
-import { WeatherData } from '@/types/weather';
+import { useState, useMemo, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Cloud, MapPin, RefreshCw } from "lucide-react";
+import { WeatherCard } from "@/components/weather/WeatherCard";
+import { CitySearch } from "@/components/weather/CitySearch";
+import { WeatherAlerts } from "@/components/weather/WeatherAlerts";
+import { WeatherAdvice } from "@/components/weather/WeatherAdvice";
+import { WeatherComparison } from "@/components/weather/WeatherComparison";
+import { mockCities, mockAlerts } from "@/data/mockWeather";
+import { City, WeatherData } from "@/types/weather";
+import {
+  fetchWeatherAlerts,
+  fetchWeatherByCoords,
+} from "@/services/weatherService";
+import { getCurrentLocation } from "@/utils/geoLocation";
+import { getCityFromCoords } from "@/services/cityService";
+import { mapToWeatherAlerts, mapToWeatherData } from "@/utils/mapWeather";
 
 const Index = () => {
-  const [selectedCityIds, setSelectedCityIds] = useState<string[]>(['1', '2']);
   const [alerts, setAlerts] = useState(mockAlerts);
+  const [selectedCities, setSelectedCities] = useState<City[]>([]);
 
-  const selectedCities = useMemo(() => 
-    mockCities.filter((city) => selectedCityIds.includes(city.id)),
-    [selectedCityIds]
-  );
+  const handleAddCity = async (city: City) => {
+    setSelectedCities((prev) => [...prev, city]);
 
-  const selectedCityNames = useMemo(() => 
-    selectedCities.map((city) => city.city),
-    [selectedCities]
-  );
-
-  const handleAddCity = (cityName: string) => {
-    const city = mockCities.find((c) => c.city === cityName);
-    if (city && !selectedCityIds.includes(city.id)) {
-      setSelectedCityIds((prev) => [...prev, city.id]);
-    }
+    const weatherRes = await fetchWeatherByCoords(city.lat, city.lon);
+    setWeather((prev) => [...prev, mapToWeatherData(weatherRes)]);
   };
 
-  const handleRemoveCity = (cityId: string) => {
-    setSelectedCityIds((prev) => prev.filter((id) => id !== cityId));
+  const handleRemoveCity = (id: string) => {
+    setSelectedCities((prev) => prev.filter((c) => c.id !== id));
+    setWeather((prev) => prev.filter((w) => w.id !== id));
   };
 
   const handleDismissAlert = (alertId: string) => {
     setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
   };
+
+  const [weather, setWeather] = useState<WeatherData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // if (loading) return <p>Loading...</p>;
+
+  const [query, setQuery] = useState("");
+
+  const selectedCityNames = selectedCities.map((city) => city.name);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const position = await getCurrentLocation();
+        const { latitude, longitude } = position.coords;
+
+        const lat = latitude;
+        const lon = longitude;
+
+        const cityData = await getCityFromCoords(lat, lon);
+
+        const city: City = {
+          id: `${lat}-${lon}`,
+          name: cityData.name,
+          country: cityData.country,
+          lat,
+          lon,
+        };
+
+        setSelectedCities([city]);
+
+        const weatherRes = await fetchWeatherByCoords(lat, lon);
+        const weatherData = mapToWeatherData(weatherRes);
+        weatherData.isCurrentLocation = true;
+
+        setWeather([weatherData]);
+
+        const alertsRes = await fetchWeatherAlerts(lat, lon);
+        setAlerts(mapToWeatherAlerts(alertsRes.alerts));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    init();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -51,7 +97,7 @@ const Index = () => {
         <header className="border-b border-border/50 backdrop-blur-md bg-background/80 sticky top-0 z-50">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <motion.div 
+              <motion.div
                 className="flex items-center gap-3"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -99,7 +145,7 @@ const Index = () => {
               </div>
               <CitySearch
                 onAddCity={handleAddCity}
-                addedCities={selectedCityNames}
+                addedCities={selectedCities}
               />
             </motion.section>
 
@@ -128,16 +174,17 @@ const Index = () => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <AnimatePresence mode="popLayout">
-                  {selectedCities.map((city) => (
+                  {weather.map((city) => (
                     <WeatherCard
                       key={city.id}
                       weather={city}
-                      onRemove={handleRemoveCity}
+                      // onRemove={handleRemoveCity}
+                      onRemove={!weather.isCurrentLocation ? handleRemoveCity : undefined}
                     />
                   ))}
                 </AnimatePresence>
               </div>
-              
+
               {selectedCities.length === 0 && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -170,7 +217,7 @@ const Index = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <WeatherAdvice weatherData={selectedCities} />
+              <WeatherAdvice weatherData={weather} />
             </motion.section>
           </div>
         </main>

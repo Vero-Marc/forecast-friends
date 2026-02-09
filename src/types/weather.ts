@@ -6,7 +6,7 @@ export interface WeatherData {
   feelsLike: number;
   humidity: number;
   windSpeed: number;
-  condition: WeatherCondition;
+  condition: string;
   description: string;
   high: number;
   low: number;
@@ -15,9 +15,11 @@ export interface WeatherData {
   pressure: number;
   sunrise: string;
   sunset: string;
+  isCurrentLocation?: boolean;
+
 }
 
-export type WeatherCondition = 'sunny' | 'cloudy' | 'rainy' | 'stormy' | 'snowy' | 'partly-cloudy';
+
 
 export interface WeatherAlert {
   id: string;
@@ -35,3 +37,14 @@ export interface WeatherAdvice {
   description: string;
   priority: 'low' | 'medium' | 'high';
 }
+
+export interface City {
+  id:string;
+  name: string;
+  country: string;
+  lat: number;
+  lon: number;
+  state?: string;
+}
+
+

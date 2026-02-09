@@ -4,9 +4,6 @@ import { WeatherData } from '@/types/weather';
 import { WeatherIcon } from './WeatherIcon';
 import { cn } from '@/lib/utils';
 
-interface WeatherComparisonProps {
-  cities: WeatherData[];
-}
 
 interface ComparisonMetric {
   label: string;
@@ -24,7 +21,7 @@ const metrics: ComparisonMetric[] = [
   { label: 'Visibility', key: 'visibility', unit: 'km', higherIsBetter: true },
 ];
 
-export const WeatherComparison = ({ cities }: WeatherComparisonProps) => {
+export const WeatherComparison = ({ cities }) => {
   if (cities.length < 2) {
     return (
       <div className="glass-card p-8 text-center">
@@ -79,7 +76,7 @@ export const WeatherComparison = ({ cities }: WeatherComparisonProps) => {
                 <div className="flex items-center justify-center gap-2">
                   <WeatherIcon condition={city.condition} size="sm" />
                   <span className="font-display font-semibold text-foreground">
-                    {city.city}
+                    {city.name}
                   </span>
                 </div>
               </motion.div>
