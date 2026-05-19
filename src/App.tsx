@@ -10,9 +10,7 @@ import CreateOrganization from "./pages/CreateOrganization";
 import OnboardingDetail from "./pages/OnboardingDetail";
 import Organizations from "./pages/Organizations";
 import OrganizationDetail from "./pages/OrganizationDetail";
-import Documents from "./pages/Documents";
-import Integrations from "./pages/Integrations";
-import Settings from "./pages/Settings";
+import CreateVA from "./pages/CreateVA";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,9 +29,7 @@ const App = () => (
             <Route path="/onboarding/:id" element={<OnboardingDetail />} />
             <Route path="/organizations" element={<Organizations />} />
             <Route path="/organizations/:id" element={<OrganizationDetail />} />
-            <Route path="/documents" element={<Documents />} />
-            <Route path="/integrations" element={<Integrations />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/organizations/:id/va/:vaId" element={<CreateVA />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

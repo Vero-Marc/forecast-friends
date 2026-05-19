@@ -18,9 +18,11 @@ const titleMap: Record<string, string> = {
   "/": "Dashboard",
   "/onboarding": "Onboarding",
   "/organizations": "Organizations",
-  "/documents": "Documents",
-  "/integrations": "Integrations",
-  "/settings": "Settings",
+  "/reports": "Recent Reports",
+  "/roles": "Role Management",
+  "/users": "User Management",
+  "/payins": "Payins Service",
+  "/payouts": "Payouts Service",
 };
 
 export default function AppLayout() {
