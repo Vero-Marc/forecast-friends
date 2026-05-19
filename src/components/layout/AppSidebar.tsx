@@ -1,11 +1,22 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useState } from "react";
 import {
   LayoutDashboard,
   ClipboardList,
   Building2,
-  FileText,
-  Plug,
-  Settings,
+  FileBarChart2,
+  ShieldCheck,
+  Users,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  ChevronRight,
+  Receipt,
+  Undo2,
+  Wallet,
+  Handshake,
+  SearchCheck,
+  Send,
+  LineChart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -17,19 +28,56 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-const items = [
+const primary = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Onboarding", url: "/onboarding", icon: ClipboardList },
   { title: "Organizations", url: "/organizations", icon: Building2 },
-  { title: "Documents", url: "/documents", icon: FileText },
-  { title: "Integrations", url: "/integrations", icon: Plug },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Recent Reports", url: "/reports", icon: FileBarChart2 },
+];
+
+const access = [
+  { title: "Role Management", url: "/roles", icon: ShieldCheck },
+  { title: "User Management", url: "/users", icon: Users },
+];
+
+type GroupItem = {
+  title: string;
+  icon: any;
+  children: { title: string; url: string; icon: any }[];
+};
+
+const services: GroupItem[] = [
+  {
+    title: "Payins Service",
+    icon: ArrowDownToLine,
+    children: [
+      { title: "Transactions", url: "/payins/transactions", icon: Receipt },
+      { title: "Refunds", url: "/payins/refunds", icon: Undo2 },
+      { title: "Settlements", url: "/payins/settlements", icon: Wallet },
+    ],
+  },
+  {
+    title: "Payouts Service",
+    icon: ArrowUpFromLine,
+    children: [
+      { title: "Transactions", url: "/payouts/transactions", icon: Receipt },
+      { title: "Partner Settlements", url: "/payouts/partner-settlements", icon: Handshake },
+      { title: "Check Status", url: "/payouts/check-status", icon: SearchCheck },
+      { title: "Fund Transfer", url: "/payouts/fund-transfer", icon: Send },
+      { title: "Transaction Insights", url: "/payouts/insights", icon: LineChart },
+      { title: "Wallet Management", url: "/payouts/wallets", icon: Wallet },
+    ],
+  },
 ];
 
 export function AppSidebar() {
@@ -38,6 +86,11 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const isActive = (url: string) =>
     url === "/" ? pathname === "/" : pathname.startsWith(url);
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
+    "Payins Service": pathname.startsWith("/payins"),
+    "Payouts Service": pathname.startsWith("/payouts"),
+  }));
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -60,10 +113,77 @@ export function AppSidebar() {
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {primary.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                     <NavLink to={item.url} end={item.url === "/"}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Services</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {services.map((group) => {
+                const groupActive = group.children.some((c) => isActive(c.url));
+                const open = openGroups[group.title] ?? groupActive;
+                return (
+                  <Collapsible
+                    key={group.title}
+                    open={open}
+                    onOpenChange={(v) => setOpenGroups((s) => ({ ...s, [group.title]: v }))}
+                    asChild
+                  >
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton tooltip={group.title} isActive={groupActive}>
+                          <group.icon className="h-4 w-4" />
+                          <span>{group.title}</span>
+                          <ChevronRight
+                            className={cn(
+                              "ml-auto h-3.5 w-3.5 transition-transform",
+                              open && "rotate-90"
+                            )}
+                          />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {group.children.map((child) => (
+                            <SidebarMenuSubItem key={child.title}>
+                              <SidebarMenuSubButton asChild isActive={isActive(child.url)}>
+                                <NavLink to={child.url}>
+                                  <child.icon className="h-3.5 w-3.5" />
+                                  <span>{child.title}</span>
+                                </NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Access</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {access.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                    <NavLink to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </NavLink>
