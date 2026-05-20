@@ -105,10 +105,9 @@ export default function Organizations() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">{o.category}</TableCell>
-                    <TableCell><StatusBadge status={o.kybStatus} /></TableCell>
+                    <TableCell className="text-sm">{o.businessType}</TableCell>
                     <TableCell><StatusBadge status={o.status} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{o.createdOn}</TableCell>
-                    <TableCell className="text-sm">{o.assignedAdmin}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="ghost" size="sm">
                         <Link to={`/organizations/${o.id}`}>Preview <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
