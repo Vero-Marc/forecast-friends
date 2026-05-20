@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const titleMap: Record<string, string> = {
   "/": "Dashboard",
@@ -58,6 +59,7 @@ export default function AppLayout() {
                   className="pl-9 w-72 h-9 bg-muted/60 border-transparent focus-visible:bg-background"
                 />
               </div>
+              <ThemeToggle />
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-4 w-4" />
                 <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-destructive" />
