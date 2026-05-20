@@ -93,22 +93,7 @@ export default function OrganizationDetail() {
           </div>
         </div>
 
-        {!activated ? (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => setRejectOpen(true)}>
-              <XCircle className="mr-1.5 h-4 w-4" /> Reject
-            </Button>
-            <Button variant="outline" onClick={() => setHoldOpen(true)}>
-              <PauseCircle className="mr-1.5 h-4 w-4" /> Hold
-            </Button>
-            <Button
-              onClick={() => setConfirmOpen(true)}
-              className="gradient-primary text-primary-foreground shadow-glow"
-            >
-              <ShieldCheck className="mr-1.5 h-4 w-4" /> Activate Organization
-            </Button>
-          </div>
-        ) : (
+        {activated && (
           <div className="flex items-center gap-2">
             <Button variant="outline">Edit</Button>
             <Button className="gradient-primary text-primary-foreground">Manage access</Button>
