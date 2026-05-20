@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { organizations } from "@/data/mockData";
-import { Download, Plus, Search, ArrowRight } from "lucide-react";
+import { Search, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const PAGE_SIZE = 10;
@@ -40,12 +40,6 @@ export default function Organizations() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Organizations</h1>
           <p className="text-sm text-muted-foreground mt-1">All onboarded entities and their current standing.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline"><Download className="mr-1.5 h-4 w-4" /> Export</Button>
-          <Button asChild className="gradient-primary text-primary-foreground">
-            <Link to="/onboarding/create"><Plus className="mr-1.5 h-4 w-4" />Add Organization</Link>
-          </Button>
         </div>
       </div>
 
@@ -90,11 +84,10 @@ export default function Organizations() {
                 <TableRow>
                   <TableHead>Organization</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>KYB Status</TableHead>
-                  <TableHead>Activation Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Assigned Admin</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>Business Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created At</TableHead>
+                  <TableHead className="text-right">Preview</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -112,10 +105,9 @@ export default function Organizations() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">{o.category}</TableCell>
-                    <TableCell><StatusBadge status={o.kybStatus} /></TableCell>
+                    <TableCell className="text-sm">{o.businessType}</TableCell>
                     <TableCell><StatusBadge status={o.status} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{o.createdOn}</TableCell>
-                    <TableCell className="text-sm">{o.assignedAdmin}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="ghost" size="sm">
                         <Link to={`/organizations/${o.id}`}>Preview <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
@@ -125,7 +117,7 @@ export default function Organizations() {
                 ))}
                 {pageData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-10">
+                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
                       No matching organizations.
                     </TableCell>
                   </TableRow>
