@@ -84,11 +84,10 @@ export default function Organizations() {
                 <TableRow>
                   <TableHead>Organization</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>KYB Status</TableHead>
-                  <TableHead>Activation Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Assigned Admin</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>Business Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created At</TableHead>
+                  <TableHead className="text-right">Preview</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
