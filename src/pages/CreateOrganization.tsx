@@ -7,16 +7,16 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Stepper } from "@/components/common/Stepper";
-import { Store, Handshake, Users, CheckCircle2, ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import { Store, Handshake, Users, CheckCircle2, ArrowLeft, ArrowRight, Sparkles, LayoutGrid, ClipboardList, FileCheck2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Category } from "@/data/mockData";
 
 const steps = [
-  { title: "Category", description: "Choose org type" },
-  { title: "Details", description: "Basic info" },
-  { title: "Review", description: "Confirm & submit" },
+  { title: "Category", description: "Choose org type", icon: LayoutGrid },
+  { title: "Details", description: "Basic info", icon: ClipboardList },
+  { title: "Review", description: "Confirm & submit", icon: FileCheck2 },
 ];
 
 const categories: { id: Category; title: string; description: string; icon: any }[] = [
