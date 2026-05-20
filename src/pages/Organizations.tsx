@@ -41,12 +41,6 @@ export default function Organizations() {
           <h1 className="text-2xl font-semibold tracking-tight">Organizations</h1>
           <p className="text-sm text-muted-foreground mt-1">All onboarded entities and their current standing.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline"><Download className="mr-1.5 h-4 w-4" /> Export</Button>
-          <Button asChild className="gradient-primary text-primary-foreground">
-            <Link to="/onboarding/create"><Plus className="mr-1.5 h-4 w-4" />Add Organization</Link>
-          </Button>
-        </div>
       </div>
 
       <Card className="surface-card">
