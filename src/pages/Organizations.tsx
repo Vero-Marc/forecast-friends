@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { organizations } from "@/data/mockData";
-import { Download, Plus, Search, ArrowRight } from "lucide-react";
+import { Search, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const PAGE_SIZE = 10;
