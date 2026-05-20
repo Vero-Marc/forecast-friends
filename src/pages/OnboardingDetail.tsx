@@ -21,10 +21,10 @@ import {
 import { toast } from "sonner";
 
 const steps = [
-  { title: "KYB", description: "Business verification" },
-  { title: "Account", description: "Banking" },
-  { title: "Documents", description: "Upload files" },
-  { title: "Integration", description: "API & webhook" },
+  { title: "KYB", description: "Business verification", icon: Building2 },
+  { title: "Account", description: "Banking", icon: Banknote },
+  { title: "Documents", description: "Upload files", icon: FileText },
+  { title: "Integration", description: "API & webhook", icon: Plug },
 ];
 
 export default function OnboardingDetail() {
