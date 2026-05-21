@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { Eye, MessageSquareWarning, CheckCircle2, Loader2, ArrowRight, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { StatCard } from "@/components/common/StatCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { stats, monthlySeries, activeDistribution, organizations } from "@/data/mockData";
+import { organizations } from "@/data/mockData";
 import {
   Bar,
   BarChart,
@@ -27,12 +27,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
 
-const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))"];
+const profileStatusData = [
+  { status: "Active", count: 312 },
+  { status: "On Hold", count: 42 },
+  { status: "Inactive", count: 87 },
+];
+
+const onboardingStatusData = [
+  { name: "In Progress", value: 64 },
+  { name: "In Review", value: 38 },
+  { name: "Remarked", value: 21 },
+  { name: "Approved", value: 248 },
+];
+
+const DONUT_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--info))",
+  "hsl(var(--warning))",
+  "hsl(var(--success))",
+];
 
 export default function Dashboard() {
   const recent = organizations.slice(0, 6);
+  const totalOnboarding = onboardingStatusData.reduce((a, b) => a + b.value, 0);
 
   return (
     <div className="space-y-6">
@@ -50,29 +68,37 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard
+          icon={Eye}
+          label="In Review"
+          value={38}
+          trend={6.1}
+          subtitle="awaiting compliance review"
+          tint="info"
+        />
+        <StatCard
+          icon={MessageSquareWarning}
+          label="Remarked"
+          value={21}
+          trend={-3.4}
+          subtitle="requires applicant action"
+          tint="primary"
+        />
         <StatCard
           icon={CheckCircle2}
-          label={stats.approved.label}
-          value={stats.approved.value}
-          trend={stats.approved.trend}
+          label="Approved"
+          value={248}
+          trend={12.4}
           subtitle="vs. previous quarter"
           tint="success"
         />
         <StatCard
-          icon={Clock}
-          label={stats.inProgress.label}
-          value={stats.inProgress.value}
-          trend={stats.inProgress.trend}
+          icon={Loader2}
+          label="In Progress"
+          value={64}
+          trend={8.2}
           subtitle="across all categories"
-          tint="info"
-        />
-        <StatCard
-          icon={Building2}
-          label={stats.active.label}
-          value={stats.active.value}
-          trend={stats.active.trend}
-          subtitle="processing live transactions"
           tint="primary"
         />
       </div>
@@ -82,15 +108,18 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base">Onboarding pipeline</CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">In progress vs on hold, monthly</p>
+                <CardTitle className="text-base">Organization profile status</CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Distribution by current profile state</p>
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-primary" /> In progress
+                  <span className="h-2.5 w-2.5 rounded-sm bg-success" /> Active
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-accent" /> On hold
+                  <span className="h-2.5 w-2.5 rounded-sm bg-warning" /> On Hold
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-muted-foreground/60" /> Inactive
                 </span>
               </div>
             </div>
@@ -98,9 +127,23 @@ export default function Dashboard() {
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlySeries} barGap={6}>
+                <BarChart data={profileStatusData} barGap={6}>
+                  <defs>
+                    <linearGradient id="barActive" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.55} />
+                    </linearGradient>
+                    <linearGradient id="barHold" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--warning))" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="hsl(var(--warning))" stopOpacity={0.55} />
+                    </linearGradient>
+                    <linearGradient id="barInactive" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.6} />
+                      <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.3} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="status" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                   <Tooltip
                     cursor={{ fill: "hsl(var(--muted))" }}
@@ -111,8 +154,20 @@ export default function Dashboard() {
                       fontSize: 12,
                     }}
                   />
-                  <Bar dataKey="inProgress" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={24} />
-                  <Bar dataKey="onHold" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} maxBarSize={24} />
+                  <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={64}>
+                    {profileStatusData.map((entry, i) => (
+                      <Cell
+                        key={i}
+                        fill={
+                          entry.status === "Active"
+                            ? "url(#barActive)"
+                            : entry.status === "On Hold"
+                            ? "url(#barHold)"
+                            : "url(#barInactive)"
+                        }
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -121,24 +176,26 @@ export default function Dashboard() {
 
         <Card className="surface-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Organization status</CardTitle>
-            <p className="text-xs text-muted-foreground">Active vs inactive</p>
+            <CardTitle className="text-base">Onboarding status</CardTitle>
+            <p className="text-xs text-muted-foreground">Pipeline breakdown by stage</p>
           </CardHeader>
           <CardContent>
             <div className="h-72 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={activeDistribution}
-                    innerRadius={70}
+                    data={onboardingStatusData}
+                    innerRadius={68}
                     outerRadius={100}
                     dataKey="value"
                     paddingAngle={3}
                     stroke="hsl(var(--background))"
                     strokeWidth={3}
+                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
                   >
-                    {activeDistribution.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i]} />
+                    {onboardingStatusData.map((_, i) => (
+                      <Cell key={i} fill={DONUT_COLORS[i]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -148,6 +205,7 @@ export default function Dashboard() {
                       borderRadius: "0.5rem",
                       fontSize: 12,
                     }}
+                    formatter={(v: number, n) => [`${v} (${((v / totalOnboarding) * 100).toFixed(1)}%)`, n]}
                   />
                   <Legend
                     verticalAlign="bottom"
@@ -157,10 +215,8 @@ export default function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-8">
-                <p className="text-2xl font-semibold">
-                  {activeDistribution.reduce((a, b) => a + b.value, 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">Total orgs</p>
+                <p className="text-2xl font-semibold">{totalOnboarding}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
               </div>
             </div>
           </CardContent>
