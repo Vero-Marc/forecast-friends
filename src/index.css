@@ -129,7 +129,14 @@
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 20%;
     --sidebar-ring: 275 40% 62%;
+
+    --chart-1: oklch(0.8053 0.0877 306.3300);
+    --chart-2: oklch(0.7052 0.0877 306.3300);
+    --chart-3: oklch(0.5135 0.0877 306.3300);
+    --chart-4: oklch(0.4104 0.0581 306.5100);
+    --chart-5: oklch(0.3009 0.0378 307.0500);
   }
+
 }
 
 @layer base {
