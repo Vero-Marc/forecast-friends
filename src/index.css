@@ -64,7 +64,14 @@
     --sidebar-accent-foreground: 265 65% 32%;
     --sidebar-border: 260 10% 90%;
     --sidebar-ring: 265 65% 32%;
+
+    --chart-1: oklch(0.2843 0.1479 298.0900);
+    --chart-2: oklch(0.3615 0.1800 300);
+    --chart-3: oklch(0.5097 0.1800 300);
+    --chart-4: oklch(0.7073 0.1800 300);
+    --chart-5: oklch(0.9064 0.0306 309.0600);
   }
+
 
   .dark {
     --background: 265 10% 14%;
