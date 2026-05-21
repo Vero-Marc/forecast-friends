@@ -42,11 +42,12 @@ const onboardingStatusData = [
 ];
 
 const DONUT_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--info))",
-  "hsl(var(--warning))",
-  "hsl(var(--success))",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
 ];
+
 
 export default function Dashboard() {
   const recent = organizations.slice(0, 6);
