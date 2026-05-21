@@ -132,18 +132,19 @@ export default function Dashboard() {
                 <BarChart data={profileStatusData} barGap={6}>
                   <defs>
                     <linearGradient id="barActive" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.55} />
+                      <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={1} />
+                      <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.65} />
                     </linearGradient>
                     <linearGradient id="barHold" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--warning))" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="hsl(var(--warning))" stopOpacity={0.55} />
+                      <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={1} />
+                      <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0.65} />
                     </linearGradient>
                     <linearGradient id="barInactive" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.6} />
-                      <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.3} />
+                      <stop offset="0%" stopColor="var(--chart-5)" stopOpacity={1} />
+                      <stop offset="100%" stopColor="var(--chart-5)" stopOpacity={0.65} />
                     </linearGradient>
                   </defs>
+
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="status" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
