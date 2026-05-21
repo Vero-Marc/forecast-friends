@@ -114,15 +114,16 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-success" /> Active
+                  <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-2)" }} /> Active
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-warning" /> On Hold
+                  <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-3)" }} /> On Hold
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-muted-foreground/60" /> Inactive
+                  <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-5)" }} /> Inactive
                 </span>
               </div>
+
             </div>
           </CardHeader>
           <CardContent>
