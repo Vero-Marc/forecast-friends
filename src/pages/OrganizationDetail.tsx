@@ -21,6 +21,7 @@ import { organizations } from "@/data/mockData";
 import {
   ArrowLeft, Mail, Phone, MapPin, FileText, Download, Eye, ShieldCheck,
   PauseCircle, XCircle, CheckCircle2, AlertTriangle, Lock, Plus, Pencil, Trash2,
+  Save, X, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,6 +48,39 @@ export default function OrganizationDetail() {
   const [holdReason, setHoldReason] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [vas, setVAs] = useState<VA[]>(seedVAs);
+
+  // Editable section state
+  const [editAdmin, setEditAdmin] = useState(false);
+  const [adminData, setAdminData] = useState({
+    name: org.assignedAdmin,
+    role: "Compliance Admin",
+    email: org.email,
+    phone: org.phone,
+    timezone: "America/Los_Angeles (UTC-7)",
+  });
+  const [adminDraft, setAdminDraft] = useState(adminData);
+
+  const [editBanking, setEditBanking] = useState(false);
+  const [bankingData, setBankingData] = useState({
+    holder: org.name,
+    accountNumber: "•••• •••• 4421",
+    bank: "Pinnacle Trust",
+    branch: "San Francisco Downtown",
+    ifsc: "PINTUS33",
+  });
+  const [bankingDraft, setBankingDraft] = useState(bankingData);
+
+  const [docs, setDocs] = useState([
+    { name: "Certificate of Incorporation.pdf", type: "Incorporation", date: "12 May 2026", status: "Approved" },
+    { name: "Tax Registration.pdf", type: "Tax", date: "12 May 2026", status: "Approved" },
+    { name: "Director ID.png", type: "ID Proof", date: "13 May 2026", status: "In Review" },
+    { name: "Bank Statement.pdf", type: "Bank Proof", date: "14 May 2026", status: "Approved" },
+  ]);
+  const [editDocs, setEditDocs] = useState(false);
+
+  const [editLimits, setEditLimits] = useState<Record<string, boolean>>({});
+  const [editMethods, setEditMethods] = useState<Record<string, boolean>>({});
+  const [editCommission, setEditCommission] = useState<Record<string, boolean>>({});
 
   const displayStatus = activated ? "Active" : org.status;
 
@@ -188,23 +222,81 @@ export default function OrganizationDetail() {
         <TabsContent value="account" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="surface-card">
-              <CardHeader><CardTitle className="text-base">Admin contact</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">Admin contact</CardTitle>
+                {!editAdmin ? (
+                  <Button size="sm" variant="outline" onClick={() => { setAdminDraft(adminData); setEditAdmin(true); }}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setEditAdmin(false)}>
+                      <X className="mr-1 h-3.5 w-3.5" /> Cancel
+                    </Button>
+                    <Button size="sm" className="gradient-primary text-primary-foreground"
+                      onClick={() => { setAdminData(adminDraft); setEditAdmin(false); toast.success("Admin contact updated"); }}>
+                      <Save className="mr-1 h-3.5 w-3.5" /> Save
+                    </Button>
+                  </div>
+                )}
+              </CardHeader>
               <CardContent>
-                <Row k="Name" v={org.assignedAdmin} />
-                <Row k="Role" v="Compliance Admin" />
-                <Row k="Email" v={org.email} />
-                <Row k="Phone" v={org.phone} />
-                <Row k="Timezone" v="America/Los_Angeles (UTC-7)" />
+                {!editAdmin ? (
+                  <>
+                    <Row k="Name" v={adminData.name} />
+                    <Row k="Role" v={adminData.role} />
+                    <Row k="Email" v={adminData.email} />
+                    <Row k="Phone" v={adminData.phone} />
+                    <Row k="Timezone" v={adminData.timezone} />
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5"><Label>Name</Label><Input value={adminDraft.name} onChange={(e) => setAdminDraft({ ...adminDraft, name: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label>Role</Label><Input value={adminDraft.role} onChange={(e) => setAdminDraft({ ...adminDraft, role: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={adminDraft.email} onChange={(e) => setAdminDraft({ ...adminDraft, email: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label>Phone</Label><Input value={adminDraft.phone} onChange={(e) => setAdminDraft({ ...adminDraft, phone: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label>Timezone</Label><Input value={adminDraft.timezone} onChange={(e) => setAdminDraft({ ...adminDraft, timezone: e.target.value })} /></div>
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card className="surface-card">
-              <CardHeader><CardTitle className="text-base">Banking</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">Banking</CardTitle>
+                {!editBanking ? (
+                  <Button size="sm" variant="outline" onClick={() => { setBankingDraft(bankingData); setEditBanking(true); }}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setEditBanking(false)}>
+                      <X className="mr-1 h-3.5 w-3.5" /> Cancel
+                    </Button>
+                    <Button size="sm" className="gradient-primary text-primary-foreground"
+                      onClick={() => { setBankingData(bankingDraft); setEditBanking(false); toast.success("Banking details updated"); }}>
+                      <Save className="mr-1 h-3.5 w-3.5" /> Save
+                    </Button>
+                  </div>
+                )}
+              </CardHeader>
               <CardContent>
-                <Row k="Account holder" v={org.name} />
-                <Row k="Account number" v="•••• •••• 4421" />
-                <Row k="Bank" v="Pinnacle Trust" />
-                <Row k="Branch" v="San Francisco Downtown" />
-                <Row k="Routing / IFSC" v="PINTUS33" />
+                {!editBanking ? (
+                  <>
+                    <Row k="Account holder" v={bankingData.holder} />
+                    <Row k="Account number" v={bankingData.accountNumber} />
+                    <Row k="Bank" v={bankingData.bank} />
+                    <Row k="Branch" v={bankingData.branch} />
+                    <Row k="Routing / IFSC" v={bankingData.ifsc} />
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5"><Label>Account holder</Label><Input value={bankingDraft.holder} onChange={(e) => setBankingDraft({ ...bankingDraft, holder: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label>Account number</Label><Input value={bankingDraft.accountNumber} onChange={(e) => setBankingDraft({ ...bankingDraft, accountNumber: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label>Bank</Label><Input value={bankingDraft.bank} onChange={(e) => setBankingDraft({ ...bankingDraft, bank: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label>Branch</Label><Input value={bankingDraft.branch} onChange={(e) => setBankingDraft({ ...bankingDraft, branch: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label>Routing / IFSC</Label><Input value={bankingDraft.ifsc} onChange={(e) => setBankingDraft({ ...bankingDraft, ifsc: e.target.value })} /></div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -213,26 +305,56 @@ export default function OrganizationDetail() {
         {/* Documents */}
         <TabsContent value="documents" className="mt-4 space-y-4">
           <Card className="surface-card">
-            <CardHeader><CardTitle className="text-base">Uploaded documents</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Uploaded documents</CardTitle>
+              {!editDocs ? (
+                <Button size="sm" variant="outline" onClick={() => setEditDocs(true)}>
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                </Button>
+              ) : (
+                <Button size="sm" className="gradient-primary text-primary-foreground"
+                  onClick={() => { setEditDocs(false); toast.success("Documents updated"); }}>
+                  <Save className="mr-1 h-3.5 w-3.5" /> Done
+                </Button>
+              )}
+            </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  { name: "Certificate of Incorporation.pdf", type: "Incorporation", date: "12 May 2026", status: "Approved" },
-                  { name: "Tax Registration.pdf", type: "Tax", date: "12 May 2026", status: "Approved" },
-                  { name: "Director ID.png", type: "ID Proof", date: "13 May 2026", status: "In Review" },
-                  { name: "Bank Statement.pdf", type: "Bank Proof", date: "14 May 2026", status: "Approved" },
-                ].map((f) => (
-                  <div key={f.name} className="flex items-center gap-3 rounded-lg border bg-card p-3 hover:bg-muted/30 transition-colors">
+                {docs.map((f, i) => (
+                  <div key={f.name + i} className="flex items-center gap-3 rounded-lg border bg-card p-3 hover:bg-muted/30 transition-colors">
                     <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{f.name}</p>
-                      <p className="text-xs text-muted-foreground">{f.type} · Uploaded {f.date}</p>
+                      {editDocs ? (
+                        <Input
+                          value={f.name}
+                          onChange={(e) => setDocs((s) => s.map((d, idx) => (idx === i ? { ...d, name: e.target.value } : d)))}
+                          className="h-8 text-sm"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium truncate">{f.name}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-0.5">{f.type} · Uploaded {f.date}</p>
                     </div>
                     <StatusBadge status={f.status as any} />
-                    <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
+                    {editDocs ? (
+                      <>
+                        <Button variant="ghost" size="icon" title="Replace file"
+                          onClick={() => toast.success(`${f.name} marked for replacement`)}>
+                          <Upload className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Remove"
+                          onClick={() => setDocs((s) => s.filter((_, idx) => idx !== i))}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -270,21 +392,55 @@ export default function OrganizationDetail() {
                 <TabsContent key={mode} value={mode} className="mt-4 space-y-4">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <Card className="surface-card">
-                      <CardHeader><CardTitle className="text-base">Transaction limits</CardTitle></CardHeader>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                        <CardTitle className="text-base">Transaction limits</CardTitle>
+                        {!editLimits[mode] ? (
+                          <Button size="sm" variant="outline" onClick={() => setEditLimits((s) => ({ ...s, [mode]: true }))}>
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                          </Button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setEditLimits((s) => ({ ...s, [mode]: false }))}>
+                              <X className="mr-1 h-3.5 w-3.5" /> Cancel
+                            </Button>
+                            <Button size="sm" className="gradient-primary text-primary-foreground"
+                              onClick={() => { setEditLimits((s) => ({ ...s, [mode]: false })); toast.success("Transaction limits updated"); }}>
+                              <Save className="mr-1 h-3.5 w-3.5" /> Save
+                            </Button>
+                          </div>
+                        )}
+                      </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5"><Label>Min amount (USD)</Label><Input defaultValue="1" /></div>
-                          <div className="space-y-1.5"><Label>Max amount (USD)</Label><Input defaultValue="25000" /></div>
+                          <div className="space-y-1.5"><Label>Min amount (USD)</Label><Input defaultValue="1" disabled={!editLimits[mode]} /></div>
+                          <div className="space-y-1.5"><Label>Max amount (USD)</Label><Input defaultValue="25000" disabled={!editLimits[mode]} /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5"><Label>Daily limit</Label><Input defaultValue="250000" /></div>
-                          <div className="space-y-1.5"><Label>Monthly limit</Label><Input defaultValue="5000000" /></div>
+                          <div className="space-y-1.5"><Label>Daily limit</Label><Input defaultValue="250000" disabled={!editLimits[mode]} /></div>
+                          <div className="space-y-1.5"><Label>Monthly limit</Label><Input defaultValue="5000000" disabled={!editLimits[mode]} /></div>
                         </div>
                       </CardContent>
                     </Card>
 
                     <Card className="surface-card">
-                      <CardHeader><CardTitle className="text-base">Payment methods</CardTitle></CardHeader>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                        <CardTitle className="text-base">Payment methods</CardTitle>
+                        {!editMethods[mode] ? (
+                          <Button size="sm" variant="outline" onClick={() => setEditMethods((s) => ({ ...s, [mode]: true }))}>
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                          </Button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setEditMethods((s) => ({ ...s, [mode]: false }))}>
+                              <X className="mr-1 h-3.5 w-3.5" /> Cancel
+                            </Button>
+                            <Button size="sm" className="gradient-primary text-primary-foreground"
+                              onClick={() => { setEditMethods((s) => ({ ...s, [mode]: false })); toast.success("Payment methods updated"); }}>
+                              <Save className="mr-1 h-3.5 w-3.5" /> Save
+                            </Button>
+                          </div>
+                        )}
+                      </CardHeader>
                       <CardContent className="space-y-3">
                         {(mode === "payins"
                           ? ["Cards", "UPI", "Net Banking", "Wallets"]
@@ -292,19 +448,36 @@ export default function OrganizationDetail() {
                         ).map((m) => (
                           <div key={m} className="flex items-center justify-between rounded-md border bg-card px-3 py-2.5">
                             <span className="text-sm font-medium">{m}</span>
-                            <Switch defaultChecked />
+                            <Switch defaultChecked disabled={!editMethods[mode]} />
                           </div>
                         ))}
                       </CardContent>
                     </Card>
 
                     <Card className="surface-card lg:col-span-2">
-                      <CardHeader><CardTitle className="text-base">Commission setup</CardTitle></CardHeader>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                        <CardTitle className="text-base">Commission setup</CardTitle>
+                        {!editCommission[mode] ? (
+                          <Button size="sm" variant="outline" onClick={() => setEditCommission((s) => ({ ...s, [mode]: true }))}>
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                          </Button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setEditCommission((s) => ({ ...s, [mode]: false }))}>
+                              <X className="mr-1 h-3.5 w-3.5" /> Cancel
+                            </Button>
+                            <Button size="sm" className="gradient-primary text-primary-foreground"
+                              onClick={() => { setEditCommission((s) => ({ ...s, [mode]: false })); toast.success("Commission updated"); }}>
+                              <Save className="mr-1 h-3.5 w-3.5" /> Save
+                            </Button>
+                          </div>
+                        )}
+                      </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="space-y-1.5">
                             <Label>Pricing model</Label>
-                            <Select defaultValue="flat">
+                            <Select defaultValue="flat" disabled={!editCommission[mode]}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="flat">Flat fee</SelectItem>
@@ -313,8 +486,8 @@ export default function OrganizationDetail() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-1.5"><Label>Rate (%)</Label><Input defaultValue="1.8" /></div>
-                          <div className="space-y-1.5"><Label>Fixed fee (USD)</Label><Input defaultValue="0.30" /></div>
+                          <div className="space-y-1.5"><Label>Rate (%)</Label><Input defaultValue="1.8" disabled={!editCommission[mode]} /></div>
+                          <div className="space-y-1.5"><Label>Fixed fee (USD)</Label><Input defaultValue="0.30" disabled={!editCommission[mode]} /></div>
                         </div>
                       </CardContent>
                     </Card>
