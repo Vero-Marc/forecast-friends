@@ -49,6 +49,39 @@ export default function OrganizationDetail() {
   const [rejectReason, setRejectReason] = useState("");
   const [vas, setVAs] = useState<VA[]>(seedVAs);
 
+  // Editable section state
+  const [editAdmin, setEditAdmin] = useState(false);
+  const [adminData, setAdminData] = useState({
+    name: org.assignedAdmin,
+    role: "Compliance Admin",
+    email: org.email,
+    phone: org.phone,
+    timezone: "America/Los_Angeles (UTC-7)",
+  });
+  const [adminDraft, setAdminDraft] = useState(adminData);
+
+  const [editBanking, setEditBanking] = useState(false);
+  const [bankingData, setBankingData] = useState({
+    holder: org.name,
+    accountNumber: "•••• •••• 4421",
+    bank: "Pinnacle Trust",
+    branch: "San Francisco Downtown",
+    ifsc: "PINTUS33",
+  });
+  const [bankingDraft, setBankingDraft] = useState(bankingData);
+
+  const [docs, setDocs] = useState([
+    { name: "Certificate of Incorporation.pdf", type: "Incorporation", date: "12 May 2026", status: "Approved" },
+    { name: "Tax Registration.pdf", type: "Tax", date: "12 May 2026", status: "Approved" },
+    { name: "Director ID.png", type: "ID Proof", date: "13 May 2026", status: "In Review" },
+    { name: "Bank Statement.pdf", type: "Bank Proof", date: "14 May 2026", status: "Approved" },
+  ]);
+  const [editDocs, setEditDocs] = useState(false);
+
+  const [editLimits, setEditLimits] = useState<Record<string, boolean>>({});
+  const [editMethods, setEditMethods] = useState<Record<string, boolean>>({});
+  const [editCommission, setEditCommission] = useState<Record<string, boolean>>({});
+
   const displayStatus = activated ? "Active" : org.status;
 
   const confirmActivate = () => {
