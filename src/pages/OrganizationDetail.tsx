@@ -390,109 +390,6 @@ export default function OrganizationDetail() {
 
               {(["payins", "payouts"] as const).map((mode) => (
                 <TabsContent key={mode} value={mode} className="mt-4 space-y-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <Card className="surface-card">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-base">Transaction limits</CardTitle>
-                        {!editLimits[mode] ? (
-                          <Button size="sm" variant="outline" onClick={() => setEditLimits((s) => ({ ...s, [mode]: true }))}>
-                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
-                          </Button>
-                        ) : (
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => setEditLimits((s) => ({ ...s, [mode]: false }))}>
-                              <X className="mr-1 h-3.5 w-3.5" /> Cancel
-                            </Button>
-                            <Button size="sm" className="gradient-primary text-primary-foreground"
-                              onClick={() => { setEditLimits((s) => ({ ...s, [mode]: false })); toast.success("Transaction limits updated"); }}>
-                              <Save className="mr-1 h-3.5 w-3.5" /> Save
-                            </Button>
-                          </div>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5"><Label>Min amount (USD)</Label><Input defaultValue="1" disabled={!editLimits[mode]} /></div>
-                          <div className="space-y-1.5"><Label>Max amount (USD)</Label><Input defaultValue="25000" disabled={!editLimits[mode]} /></div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5"><Label>Daily limit</Label><Input defaultValue="250000" disabled={!editLimits[mode]} /></div>
-                          <div className="space-y-1.5"><Label>Monthly limit</Label><Input defaultValue="5000000" disabled={!editLimits[mode]} /></div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="surface-card">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-base">Payment methods</CardTitle>
-                        {!editMethods[mode] ? (
-                          <Button size="sm" variant="outline" onClick={() => setEditMethods((s) => ({ ...s, [mode]: true }))}>
-                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
-                          </Button>
-                        ) : (
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => setEditMethods((s) => ({ ...s, [mode]: false }))}>
-                              <X className="mr-1 h-3.5 w-3.5" /> Cancel
-                            </Button>
-                            <Button size="sm" className="gradient-primary text-primary-foreground"
-                              onClick={() => { setEditMethods((s) => ({ ...s, [mode]: false })); toast.success("Payment methods updated"); }}>
-                              <Save className="mr-1 h-3.5 w-3.5" /> Save
-                            </Button>
-                          </div>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {(mode === "payins"
-                          ? ["Cards", "UPI", "Net Banking", "Wallets"]
-                          : ["Bank transfer", "UPI payout", "IMPS", "RTGS"]
-                        ).map((m) => (
-                          <div key={m} className="flex items-center justify-between rounded-md border bg-card px-3 py-2.5">
-                            <span className="text-sm font-medium">{m}</span>
-                            <Switch defaultChecked disabled={!editMethods[mode]} />
-                          </div>
-                        ))}
-                      </CardContent>
-                    </Card>
-
-                    <Card className="surface-card lg:col-span-2">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-base">Commission setup</CardTitle>
-                        {!editCommission[mode] ? (
-                          <Button size="sm" variant="outline" onClick={() => setEditCommission((s) => ({ ...s, [mode]: true }))}>
-                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
-                          </Button>
-                        ) : (
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => setEditCommission((s) => ({ ...s, [mode]: false }))}>
-                              <X className="mr-1 h-3.5 w-3.5" /> Cancel
-                            </Button>
-                            <Button size="sm" className="gradient-primary text-primary-foreground"
-                              onClick={() => { setEditCommission((s) => ({ ...s, [mode]: false })); toast.success("Commission updated"); }}>
-                              <Save className="mr-1 h-3.5 w-3.5" /> Save
-                            </Button>
-                          </div>
-                        )}
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div className="space-y-1.5">
-                            <Label>Pricing model</Label>
-                            <Select defaultValue="flat" disabled={!editCommission[mode]}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="flat">Flat fee</SelectItem>
-                                <SelectItem value="percent">Percentage</SelectItem>
-                                <SelectItem value="hybrid">Hybrid</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1.5"><Label>Rate (%)</Label><Input defaultValue="1.8" disabled={!editCommission[mode]} /></div>
-                          <div className="space-y-1.5"><Label>Fixed fee (USD)</Label><Input defaultValue="0.30" disabled={!editCommission[mode]} /></div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
                   {/* VA Management */}
                   <Card className="surface-card">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -502,12 +399,10 @@ export default function OrganizationDetail() {
                       </div>
                       {activated && (
                         <Button
-                          asChild
                           className="gradient-primary text-primary-foreground"
+                          onClick={() => { setVaDialogMode("create"); setVaEditingId(undefined); setVaDialogOpen(true); }}
                         >
-                          <Link to={`/organizations/${org.id}/va/new`}>
-                            <Plus className="mr-1.5 h-4 w-4" /> Create VA
-                          </Link>
+                          <Plus className="mr-1.5 h-4 w-4" /> Create VA
                         </Button>
                       )}
                     </CardHeader>
@@ -563,8 +458,9 @@ export default function OrganizationDetail() {
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" asChild>
-                                      <Link to={`/organizations/${org.id}/va/${va.id}`}><Pencil className="h-4 w-4" /></Link>
+                                    <Button variant="ghost" size="icon"
+                                      onClick={() => { setVaDialogMode("update"); setVaEditingId(va.id); setVaDialogOpen(true); }}>
+                                      <Pencil className="h-4 w-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"
