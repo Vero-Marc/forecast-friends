@@ -575,6 +575,16 @@ export default function OrganizationDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <VADialog
+        open={vaDialogOpen}
+        onOpenChange={setVaDialogOpen}
+        mode={vaDialogMode}
+        vas={vas}
+        editingId={vaEditingId}
+        onCreated={(va) => { setVAs((s) => [...s, va]); toast.success("Virtual account created"); setVaDialogOpen(false); }}
+        onUpdated={() => { toast.success("Virtual account updated"); setVaDialogOpen(false); }}
+      />
     </div>
   );
 }
