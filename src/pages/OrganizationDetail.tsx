@@ -78,9 +78,9 @@ export default function OrganizationDetail() {
   ]);
   const [editDocs, setEditDocs] = useState(false);
 
-  const [editLimits, setEditLimits] = useState<Record<string, boolean>>({});
-  const [editMethods, setEditMethods] = useState<Record<string, boolean>>({});
-  const [editCommission, setEditCommission] = useState<Record<string, boolean>>({});
+  const [vaDialogOpen, setVaDialogOpen] = useState(false);
+  const [vaDialogMode, setVaDialogMode] = useState<"create" | "update">("create");
+  const [vaEditingId, setVaEditingId] = useState<string | undefined>(undefined);
 
   const displayStatus = activated ? "Active" : org.status;
 
