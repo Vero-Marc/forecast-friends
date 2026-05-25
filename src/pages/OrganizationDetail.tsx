@@ -17,6 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { VADialog } from "@/components/organization/VADialog";
 import { organizations } from "@/data/mockData";
 import {
   ArrowLeft, Mail, Phone, MapPin, FileText, Download, Eye, ShieldCheck,
