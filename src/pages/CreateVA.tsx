@@ -1,169 +1,265 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import { organizations } from "@/data/mockData";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft, ShieldCheck, Building2, Sliders, ListChecks, Percent,
+  Plus, Trash2, X,
+} from "lucide-react";
 import { toast } from "sonner";
 
-export default function CreateVA() {
-  const { id, vaId } = useParams();
-  const navigate = useNavigate();
-  const org = useMemo(() => organizations.find((o) => o.id === id) ?? organizations[0], [id]);
-  const isEdit = !!vaId && vaId !== "new";
+type TxnType = "UPI" | "CARD" | "NEFT" | "IMPS" | "RTGS" | "NETBANKING";
+const ALL_TYPES: { value: TxnType; label: string; sub: string }[] = [
+  { value: "UPI", label: "UPI", sub: "Unified Payments Interface" },
+  { value: "CARD", label: "CARD", sub: "Card" },
+  { value: "NEFT", label: "NEFT", sub: "Electronic Funds Transfer" },
+  { value: "IMPS", label: "IMPS", sub: "Immediate Payment" },
+  { value: "RTGS", label: "RTGS", sub: "Real Time Settlement" },
+  { value: "NETBANKING", label: "Net Banking", sub: "Net Banking" },
+];
 
-  const populated = isEdit
-    ? {
-        alias: "Primary collections",
-        accountNumber: "44219912",
-        ifsc: "PINTUS33",
-        bank: "Pinnacle Trust",
-        branch: "San Francisco Downtown",
-        purpose: "Customer collections",
-        currency: "USD",
-        notes: "Default VA for inbound subscription payments.",
-        active: true,
-      }
-    : {
-        alias: "",
-        accountNumber: "",
-        ifsc: "",
-        bank: "",
-        branch: "",
-        purpose: "",
-        currency: "USD",
-        notes: "",
-        active: true,
-      };
+type LimitRow = { type: TxnType; min: string; max: string; total: string };
+type CommissionRow = { base: string; method: "Flatrate" | "Percentage"; gateway: string; partner: string };
+
+function TypeMultiSelect({ value, onChange }: { value: TxnType[]; onChange: (v: TxnType[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const available = ALL_TYPES.filter((t) => !value.includes(t.value));
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full min-h-10 rounded-md border bg-background px-3 py-1.5 text-left text-sm flex flex-wrap items-center gap-1.5"
+      >
+        {value.length === 0 && <span className="text-muted-foreground">Select types</span>}
+        {value.map((v) => (
+          <span key={v} className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium">
+            {v}
+            <X className="h-3 w-3 cursor-pointer" onClick={(e) => { e.stopPropagation(); onChange(value.filter((x) => x !== v)); }} />
+          </span>
+        ))}
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
+          {available.length === 0 && <div className="px-3 py-2 text-xs text-muted-foreground">All selected</div>}
+          {available.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+              onClick={() => { onChange([...value, t.value]); setOpen(false); }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionCard({
+  step, icon: Icon, title, desc, children,
+}: { step: number; icon: any; title: string; desc: string; children: React.ReactNode }) {
+  return (
+    <Card className="surface-card overflow-hidden">
+      <div className="flex items-start gap-4 border-b bg-gradient-soft px-5 py-4">
+        <div className="h-10 w-10 rounded-lg gradient-primary text-primary-foreground flex items-center justify-center font-semibold shadow-glow shrink-0">
+          {step}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold">{title}</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+        </div>
+      </div>
+      <CardContent className="p-5">{children}</CardContent>
+    </Card>
+  );
+}
+
+export default function CreateVA() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const org = organizations.find((o) => o.id === id) ?? organizations[0];
+
+  const [pipeline, setPipeline] = useState("MOCK");
+  const [txnLimit, setTxnLimit] = useState("");
+  const [dailyDeposit, setDailyDeposit] = useState("");
+  const [minAmount, setMinAmount] = useState("100");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [types, setTypes] = useState<TxnType[]>(["UPI", "CARD"]);
+  const [limitRows, setLimitRows] = useState<LimitRow[]>([]);
+  const [commission, setCommission] = useState<CommissionRow[]>([
+    { base: "100", method: "Flatrate", gateway: "0", partner: "0" },
+    { base: "1000", method: "Flatrate", gateway: "0", partner: "0" },
+  ]);
+
+  // sync limit rows with selected types
+  const syncedRows = types.map((t) => limitRows.find((r) => r.type === t) ?? { type: t, min: "", max: "", total: "" });
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success(isEdit ? "Virtual account updated" : "Virtual account created");
+    toast.success("Virtual account created");
     navigate(`/organizations/${org.id}?activated=1`);
   };
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" asChild>
-            <Link to={`/organizations/${org.id}?activated=1`}><ArrowLeft className="h-4 w-4" /></Link>
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold leading-tight">
-              {isEdit ? "Update virtual account" : "Create virtual account"}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {org.name} · {org.id} {isEdit && vaId ? `· ${vaId}` : ""}
-            </p>
+      {/* Header */}
+      <div className="rounded-2xl gradient-primary text-primary-foreground p-5 md:p-6 shadow-glow">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="ghost" size="icon" asChild className="text-primary-foreground hover:bg-white/10">
+              <Link to={`/organizations/${org.id}?activated=1`}><ArrowLeft className="h-4 w-4" /></Link>
+            </Button>
+            <div>
+              <div className="flex items-center gap-2 text-xs text-primary-foreground/80">
+                <span>{org.name}</span><span>·</span><span>{org.id}</span>
+              </div>
+              <h1 className="text-2xl font-semibold leading-tight mt-0.5">Create Virtual Account</h1>
+              <p className="text-sm text-primary-foreground/80 mt-1">Configure pipeline, limits, methods and commission in a single guided flow.</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" asChild>
-            <Link to={`/organizations/${org.id}?activated=1`}>Cancel</Link>
-          </Button>
-          <Button type="submit" className="gradient-primary text-primary-foreground">
-            <ShieldCheck className="mr-1.5 h-4 w-4" /> {isEdit ? "Save changes" : "Create VA"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="ghost" asChild className="text-primary-foreground hover:bg-white/10">
+              <Link to={`/organizations/${org.id}?activated=1`}>Cancel</Link>
+            </Button>
+            <Button type="submit" variant="secondary" className="font-medium">
+              <ShieldCheck className="mr-1.5 h-4 w-4" /> Create VA
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="surface-card lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">VA details</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Alias</Label>
-                <Input defaultValue={populated.alias} placeholder="e.g. Primary collections" required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Purpose</Label>
-                <Input defaultValue={populated.purpose} placeholder="Customer collections" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Account number</Label>
-                <Input defaultValue={populated.accountNumber} placeholder="44219912" required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>IFSC / Routing</Label>
-                <Input defaultValue={populated.ifsc} placeholder="PINTUS33" required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Bank</Label>
-                <Input defaultValue={populated.bank} placeholder="Pinnacle Trust" required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Branch</Label>
-                <Input defaultValue={populated.branch} placeholder="SF Downtown" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Currency</Label>
-                <Select defaultValue={populated.currency}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="INR">INR</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Settlement cycle</Label>
-                <Select defaultValue="t2">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="t0">T+0</SelectItem>
-                    <SelectItem value="t1">T+1</SelectItem>
-                    <SelectItem value="t2">T+2</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Notes</Label>
-                <Textarea defaultValue={populated.notes} placeholder="Internal notes for this VA…" />
-              </div>
+      {/* Step 1: Pipeline */}
+      <SectionCard step={1} icon={Building2} title="Banking pipeline" desc="Pick the pipeline that will host this virtual account.">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label>Banking Pipeline</Label>
+            <Select value={pipeline} onValueChange={setPipeline}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MOCK">MOCK</SelectItem>
+                <SelectItem value="IDFC">IDFC</SelectItem>
+                <SelectItem value="ICICI">ICICI</SelectItem>
+                <SelectItem value="HDFC">HDFC</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Transaction Types</Label>
+            <TypeMultiSelect value={types} onChange={setTypes} />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Step 2: Limits */}
+      <SectionCard step={2} icon={Sliders} title="Limits" desc="Overall caps applied across this VA.">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-1.5"><Label>Transaction Limit</Label><Input placeholder="Enter Transaction Limit" value={txnLimit} onChange={(e) => setTxnLimit(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Daily Deposit Limit</Label><Input placeholder="Enter Daily Deposit Limit" value={dailyDeposit} onChange={(e) => setDailyDeposit(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Minimum Transaction Amount</Label><Input value={minAmount} onChange={(e) => setMinAmount(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Maximum Transaction Amount</Label><Input placeholder="Enter Max Amount" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} /></div>
+        </div>
+      </SectionCard>
+
+      {/* Step 3: Per-method limits */}
+      <SectionCard step={3} icon={ListChecks} title="Per-method limits" desc="Tune min, max and total caps for each selected transaction type.">
+        <div className="rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader className="bg-muted/40">
+              <TableRow>
+                <TableHead>Transaction Type</TableHead>
+                <TableHead>Min Value</TableHead>
+                <TableHead>Max Value</TableHead>
+                <TableHead>Total Limit</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {syncedRows.length === 0 && (
+                <TableRow><TableCell colSpan={4} className="text-center text-xs text-muted-foreground py-6">Select transaction types in step 1</TableCell></TableRow>
+              )}
+              {syncedRows.map((r, i) => {
+                const meta = ALL_TYPES.find((t) => t.value === r.type)!;
+                const update = (patch: Partial<LimitRow>) => {
+                  const next = [...syncedRows];
+                  next[i] = { ...r, ...patch };
+                  setLimitRows(next);
+                };
+                return (
+                  <TableRow key={r.type}>
+                    <TableCell>
+                      <div className="text-sm font-medium">{meta.label}</div>
+                      <div className="text-xs text-muted-foreground">{meta.sub}</div>
+                    </TableCell>
+                    <TableCell><Input placeholder="Min" value={r.min} onChange={(e) => update({ min: e.target.value })} /></TableCell>
+                    <TableCell><Input placeholder="Max" value={r.max} onChange={(e) => update({ max: e.target.value })} /></TableCell>
+                    <TableCell><Input placeholder="Total" value={r.total} onChange={(e) => update({ total: e.target.value })} /></TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </SectionCard>
+
+      {/* Step 4: Commission */}
+      <SectionCard step={4} icon={Percent} title="Commission setup" desc="Define gateway and partner fees by base amount tier.">
+        <div className="space-y-3">
+          <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 text-[11px] uppercase tracking-wide text-muted-foreground">
+            <div>Base Amount</div><div>Method</div><div>Gateway Fee</div><div>Partner Fee</div><div className="w-9"></div>
+          </div>
+          {commission.map((r, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-center">
+              <Input value={r.base} disabled={i === 0} onChange={(e) => setCommission(commission.map((x, idx) => idx === i ? { ...x, base: e.target.value } : x))} />
+              <Select value={r.method} onValueChange={(v) => setCommission(commission.map((x, idx) => idx === i ? { ...x, method: v as any } : x))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Flatrate">Flatrate ₹</SelectItem>
+                  <SelectItem value="Percentage">Percentage %</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input value={r.gateway} onChange={(e) => setCommission(commission.map((x, idx) => idx === i ? { ...x, gateway: e.target.value } : x))} />
+              <Input value={r.partner} onChange={(e) => setCommission(commission.map((x, idx) => idx === i ? { ...x, partner: e.target.value } : x))} />
+              {i > 0 ? (
+                <Button type="button" size="icon" variant="ghost" className="rounded-full border"
+                  onClick={() => setCommission(commission.filter((_, idx) => idx !== i))}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : <div className="w-9" />}
             </div>
-          </CardContent>
-        </Card>
+          ))}
+          <Button type="button" variant="outline" size="sm"
+            onClick={() => setCommission([...commission, { base: "", method: "Flatrate", gateway: "0", partner: "0" }])}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> Add tier
+          </Button>
+        </div>
+      </SectionCard>
 
-        <div className="space-y-4">
-          <Card className="surface-card">
-            <CardHeader><CardTitle className="text-base">Status</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between rounded-md border bg-card px-3 py-2.5">
-                <div>
-                  <p className="text-sm font-medium">Active</p>
-                  <p className="text-xs text-muted-foreground">Toggle to enable / disable this VA.</p>
-                </div>
-                <Switch defaultChecked={populated.active} />
-              </div>
-              <div className="flex items-center justify-between rounded-md border bg-card px-3 py-2.5">
-                <div>
-                  <p className="text-sm font-medium">Webhook notifications</p>
-                  <p className="text-xs text-muted-foreground">Send events to organization webhook.</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="surface-card">
-            <CardHeader><CardTitle className="text-base">Limits</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5"><Label>Min per txn</Label><Input defaultValue="1" /></div>
-              <div className="space-y-1.5"><Label>Max per txn</Label><Input defaultValue="25000" /></div>
-              <div className="space-y-1.5"><Label>Daily cap</Label><Input defaultValue="250000" /></div>
-            </CardContent>
-          </Card>
+      {/* Sticky footer */}
+      <div className="sticky bottom-4 z-10">
+        <div className="surface-elevated flex items-center justify-between px-4 py-3 rounded-xl">
+          <p className="text-xs text-muted-foreground">All set? Create the virtual account with the configuration above.</p>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" asChild>
+              <Link to={`/organizations/${org.id}?activated=1`}>Cancel</Link>
+            </Button>
+            <Button type="submit" className="gradient-primary text-primary-foreground">
+              <ShieldCheck className="mr-1.5 h-4 w-4" /> Create VA
+            </Button>
+          </div>
         </div>
       </div>
     </form>
