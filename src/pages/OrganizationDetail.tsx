@@ -17,7 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { VADialog } from "@/components/organization/VADialog";
+
 import { organizations } from "@/data/mockData";
 import {
   ArrowLeft, Mail, Phone, MapPin, FileText, Download, Eye, ShieldCheck,
@@ -79,9 +79,6 @@ export default function OrganizationDetail() {
   ]);
   const [editDocs, setEditDocs] = useState(false);
 
-  const [vaDialogOpen, setVaDialogOpen] = useState(false);
-  const [vaDialogMode, setVaDialogMode] = useState<"create" | "update">("create");
-  const [vaEditingId, setVaEditingId] = useState<string | undefined>(undefined);
 
   const displayStatus = activated ? "Active" : org.status;
 
@@ -400,10 +397,12 @@ export default function OrganizationDetail() {
                       </div>
                       {activated && (
                         <Button
+                          asChild
                           className="gradient-primary text-primary-foreground"
-                          onClick={() => { setVaDialogMode("create"); setVaEditingId(undefined); setVaDialogOpen(true); }}
                         >
-                          <Plus className="mr-1.5 h-4 w-4" /> Create VA
+                          <Link to={`/organizations/${org.id}/va/new`}>
+                            <Plus className="mr-1.5 h-4 w-4" /> Create VA
+                          </Link>
                         </Button>
                       )}
                     </CardHeader>
@@ -459,9 +458,10 @@ export default function OrganizationDetail() {
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon"
-                                      onClick={() => { setVaDialogMode("update"); setVaEditingId(va.id); setVaDialogOpen(true); }}>
-                                      <Pencil className="h-4 w-4" />
+                                    <Button variant="ghost" size="icon" asChild>
+                                      <Link to={`/organizations/${org.id}/va/${va.id}`}>
+                                        <Pencil className="h-4 w-4" />
+                                      </Link>
                                     </Button>
                                     <Button
                                       variant="ghost"
@@ -577,15 +577,6 @@ export default function OrganizationDetail() {
         </DialogContent>
       </Dialog>
 
-      <VADialog
-        open={vaDialogOpen}
-        onOpenChange={setVaDialogOpen}
-        mode={vaDialogMode}
-        vas={vas}
-        editingId={vaEditingId}
-        onCreated={(va) => { setVAs((s) => [...s, va]); toast.success("Virtual account created"); setVaDialogOpen(false); }}
-        onUpdated={() => { toast.success("Virtual account updated"); setVaDialogOpen(false); }}
-      />
     </div>
   );
 }
