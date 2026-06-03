@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FileBarChart2,
   RefreshCw,
@@ -14,9 +14,12 @@ import {
   RotateCw,
   Download,
   Building2,
+  Loader2,
+  Inbox,
+  Clock,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -25,59 +28,277 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { format, subDays } from "date-fns";
+import type { DateRange } from "react-day-picker";
+import * as XLSX from "xlsx";
 
-type ReportStatus = "Success" | "Failed";
+type ReportStatus = "Processing" | "Success" | "Failed";
 type ReportType = "payins" | "payout";
+type Category = "summary" | "settlement" | "refunds" | "audit";
 
 interface ReportRow {
   id: string;
   createdBy: string;
   initials: string;
-  date: string;
-  time: string;
+  createdAt: Date;
   email: string;
   description: string;
   status: ReportStatus;
   type: ReportType;
+  category: Category;
+  range: DateRange;
+  failureReason?: string;
 }
-
-const seed: ReportRow[] = [
-  { id: "RPT-90211", createdBy: "Sarah Chen", initials: "SC", date: "Jun 02, 2026", time: "14:32", email: "sarah@fynnix.io", description: "Monthly payins summary — May 2026", status: "Success", type: "payins" },
-  { id: "RPT-90210", createdBy: "Marcus Hill", initials: "MH", date: "Jun 02, 2026", time: "11:08", email: "ops@northwind.com", description: "Settlement reconciliation export", status: "Success", type: "payins" },
-  { id: "RPT-90209", createdBy: "Priya Raman", initials: "PR", date: "Jun 01, 2026", time: "18:54", email: "finance@apex.io", description: "Failed transactions audit (last 7d)", status: "Failed", type: "payins" },
-  { id: "RPT-90208", createdBy: "David Okonkwo", initials: "DO", date: "Jun 01, 2026", time: "09:21", email: "david@fynnix.io", description: "Partner payout breakdown", status: "Success", type: "payout" },
-  { id: "RPT-90207", createdBy: "Elena Vasquez", initials: "EV", date: "May 31, 2026", time: "22:10", email: "elena@fynnix.io", description: "Wallet movement log", status: "Success", type: "payout" },
-  { id: "RPT-90206", createdBy: "Sarah Chen", initials: "SC", date: "May 31, 2026", time: "16:42", email: "ops@helix.io", description: "Refund volume report", status: "Failed", type: "payins" },
-  { id: "RPT-90205", createdBy: "Marcus Hill", initials: "MH", date: "May 30, 2026", time: "12:00", email: "treasury@stellar.com", description: "Daily payout settlement", status: "Success", type: "payout" },
-  { id: "RPT-90204", createdBy: "Priya Raman", initials: "PR", date: "May 30, 2026", time: "08:17", email: "priya@fynnix.io", description: "VA balance snapshot", status: "Success", type: "payins" },
-];
 
 const PAGE_SIZE = 6;
 
+const CATEGORY_LABEL: Record<Category, string> = {
+  summary: "Summary",
+  settlement: "Settlement",
+  refunds: "Refunds",
+  audit: "Audit Log",
+};
+
+function seedReports(): ReportRow[] {
+  const now = new Date();
+  return [
+    {
+      id: "RPT-90211",
+      createdBy: "Sarah Chen",
+      initials: "SC",
+      createdAt: new Date(now.getTime() - 1000 * 60 * 12),
+      email: "sarah@fynnix.io",
+      description: "Monthly payins summary",
+      status: "Success",
+      type: "payins",
+      category: "summary",
+      range: { from: subDays(now, 30), to: now },
+    },
+    {
+      id: "RPT-90210",
+      createdBy: "Marcus Hill",
+      initials: "MH",
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 3),
+      email: "ops@northwind.com",
+      description: "Settlement reconciliation export",
+      status: "Success",
+      type: "payins",
+      category: "settlement",
+      range: { from: subDays(now, 7), to: now },
+    },
+    {
+      id: "RPT-90209",
+      createdBy: "Priya Raman",
+      initials: "PR",
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 26),
+      email: "finance@apex.io",
+      description: "Failed transactions audit",
+      status: "Failed",
+      type: "payins",
+      category: "audit",
+      range: { from: subDays(now, 7), to: now },
+      failureReason: "Source data unavailable for the selected range.",
+    },
+    {
+      id: "RPT-90208",
+      createdBy: "David Okonkwo",
+      initials: "DO",
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 48),
+      email: "david@fynnix.io",
+      description: "Partner payout breakdown",
+      status: "Success",
+      type: "payout",
+      category: "summary",
+      range: { from: subDays(now, 14), to: now },
+    },
+    {
+      id: "RPT-90207",
+      createdBy: "Elena Vasquez",
+      initials: "EV",
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 72),
+      email: "elena@fynnix.io",
+      description: "Wallet movement log",
+      status: "Success",
+      type: "payout",
+      category: "audit",
+      range: { from: subDays(now, 30), to: now },
+    },
+    {
+      id: "RPT-90206",
+      createdBy: "Sarah Chen",
+      initials: "SC",
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 96),
+      email: "ops@helix.io",
+      description: "Refund volume report",
+      status: "Failed",
+      type: "payins",
+      category: "refunds",
+      range: { from: subDays(now, 30), to: now },
+      failureReason: "Timed out while aggregating records.",
+    },
+    {
+      id: "RPT-90205",
+      createdBy: "Marcus Hill",
+      initials: "MH",
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 120),
+      email: "treasury@stellar.com",
+      description: "Daily payout settlement",
+      status: "Success",
+      type: "payout",
+      category: "settlement",
+      range: { from: subDays(now, 1), to: now },
+    },
+  ];
+}
+
+function fmtRange(r: DateRange | undefined) {
+  if (!r?.from) return "—";
+  if (!r.to) return format(r.from, "MMM dd, yyyy");
+  return `${format(r.from, "MMM dd")} – ${format(r.to, "MMM dd, yyyy")}`;
+}
+
+function buildFilename(type: ReportType, category: Category, r: DateRange) {
+  const from = r.from ? format(r.from, "yyyyMMdd") : "na";
+  const to = r.to ? format(r.to, "yyyyMMdd") : from;
+  const ts = format(new Date(), "yyyyMMdd-HHmmss");
+  return `${type}-${category}_${from}-${to}_${ts}.xlsx`;
+}
+
+function downloadExcel(row: ReportRow) {
+  const data = [
+    ["Report ID", row.id],
+    ["Type", row.type],
+    ["Category", CATEGORY_LABEL[row.category]],
+    ["Description", row.description],
+    ["Date Range", fmtRange(row.range)],
+    ["Generated By", row.createdBy],
+    ["Generated At", format(row.createdAt, "PPpp")],
+    [],
+    ["Transaction ID", "Date", "Amount", "Status", "Method"],
+    ...Array.from({ length: 25 }, (_, i) => [
+      `TXN-${100000 + i}`,
+      format(subDays(new Date(), i), "yyyy-MM-dd"),
+      (Math.random() * 9000 + 100).toFixed(2),
+      Math.random() > 0.15 ? "SUCCESS" : "FAILED",
+      ["UPI", "CARD", "NEFT", "RTGS"][i % 4],
+    ]),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Report");
+  XLSX.writeFile(wb, buildFilename(row.type, row.category, row.range));
+}
+
 export default function Reports() {
   const [tab, setTab] = useState<ReportType>("payins");
-  const [status, setStatus] = useState<string>("all");
-  const [range, setRange] = useState<string>("30d");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [range, setRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
   const [page, setPage] = useState(1);
+  const [rows, setRows] = useState<ReportRow[]>(() => seedReports());
+  const [generating, setGenerating] = useState(false);
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const timers = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    return () => {
+      Object.values(timers.current).forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
 
   const filtered = useMemo(() => {
-    return seed.filter((r) => {
-      if (r.type !== tab) return false;
-      if (status !== "all" && r.status.toLowerCase() !== status) return false;
-      return true;
-    });
-  }, [tab, status]);
+    return rows
+      .filter((r) => r.type === tab)
+      .filter((r) =>
+        statusFilter === "all" ? true : r.status.toLowerCase() === statusFilter
+      )
+      .filter((r) =>
+        categoryFilter === "all" ? true : r.category === categoryFilter
+      )
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }, [rows, tab, statusFilter, categoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const activeFiltersCount =
+    (statusFilter !== "all" ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
+
   const resetFilters = () => {
-    setStatus("all");
-    setRange("30d");
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setRange({ from: subDays(new Date(), 30), to: new Date() });
     setPage(1);
     toast.success("Filters reset");
+  };
+
+  const simulateProcessing = (id: string) => {
+    const t = window.setTimeout(() => {
+      const ok = Math.random() > 0.2;
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: ok ? "Success" : "Failed",
+                failureReason: ok
+                  ? undefined
+                  : "Unable to fetch upstream data. Please retry.",
+              }
+            : r
+        )
+      );
+      toast[ok ? "success" : "error"](
+        ok ? "Report generated successfully" : "Report generation failed"
+      );
+      delete timers.current[id];
+    }, 3500 + Math.random() * 1500);
+    timers.current[id] = t as unknown as number;
+  };
+
+  const handleGenerate = () => {
+    if (!range?.from) {
+      toast.error("Please select a date range");
+      return;
+    }
+    setGenerating(true);
+    const id = `RPT-${Math.floor(90000 + Math.random() * 9999)}`;
+    const newRow: ReportRow = {
+      id,
+      createdBy: "You",
+      initials: "YO",
+      createdAt: new Date(),
+      email: "you@fynnix.io",
+      description: `${CATEGORY_LABEL[(categoryFilter === "all" ? "summary" : categoryFilter) as Category]} • ${tab}`,
+      status: "Processing",
+      type: tab,
+      category: (categoryFilter === "all" ? "summary" : categoryFilter) as Category,
+      range,
+    };
+    setRows((prev) => [newRow, ...prev]);
+    setPage(1);
+    toast.message("Generating report…", {
+      description: "We'll notify you when it's ready.",
+    });
+    simulateProcessing(id);
+    window.setTimeout(() => setGenerating(false), 900);
+  };
+
+  const handleRetry = (row: ReportRow) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === row.id ? { ...r, status: "Processing", failureReason: undefined } : r
+      )
+    );
+    toast.message("Retrying report generation…");
+    simulateProcessing(row.id);
   };
 
   return (
@@ -91,7 +312,7 @@ export default function Reports() {
           </div>
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Reports</h1>
           <p className="text-sm text-muted-foreground">
-            Generate, download and review your reporting history.
+            Generate, track and download your reporting history.
           </p>
         </div>
 
@@ -126,119 +347,186 @@ export default function Reports() {
         </TabsList>
 
         <TabsContent value={tab} className="mt-6 space-y-5">
-          {/* Section card */}
+          {/* Filter Bar */}
           <div className="relative rounded-2xl border border-border bg-card/70 backdrop-blur-xl shadow-elevated overflow-hidden">
             <div className="absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(60%_60%_at_50%_0%,hsl(var(--primary)/0.18),transparent)] pointer-events-none" />
 
-            {/* Section header */}
-            <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-5 md:p-6 border-b border-border/70">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight">Reports Generation History</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Last 30 days of generated exports across your workspace.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Date range */}
-                <div className="relative">
-                  <CalendarRange className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                  <Select value={range} onValueChange={setRange}>
-                    <SelectTrigger className="h-9 pl-8 pr-3 rounded-full bg-background/80 border-border min-w-[150px] shadow-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7d">Last 7 days</SelectItem>
-                      <SelectItem value="30d">Last 30 days</SelectItem>
-                      <SelectItem value="90d">Last 90 days</SelectItem>
-                      <SelectItem value="custom">Custom range…</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <div className="relative flex flex-col lg:flex-row lg:items-end gap-4 p-5 md:p-6">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Date Range Picker */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Date Range
+                  </label>
+                  <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        className={cn(
+                          "w-full h-10 px-3.5 rounded-xl border border-border bg-background/80 backdrop-blur",
+                          "flex items-center gap-2.5 text-sm text-left shadow-xs",
+                          "hover:border-primary/40 hover:bg-background transition-all",
+                          datePopoverOpen && "ring-2 ring-primary/30 border-primary/40"
+                        )}
+                      >
+                        <CalendarRange className="h-4 w-4 text-primary shrink-0" />
+                        <span className={cn("flex-1 truncate", !range?.from && "text-muted-foreground")}>
+                          {range?.from ? fmtRange(range) : "Pick a date range"}
+                        </span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
+                      <Calendar
+                        mode="range"
+                        selected={range}
+                        onSelect={setRange}
+                        numberOfMonths={2}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Status */}
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="h-9 pl-8 pr-3 rounded-full bg-background/80 border-border min-w-[140px] shadow-xs">
-                      <SelectValue placeholder="Status" />
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-10 rounded-xl bg-background/80 border-border shadow-xs">
+                      <Filter className="h-3.5 w-3.5 text-primary mr-1" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All statuses</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
                       <SelectItem value="success">Success</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Report Type
+                  </label>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="h-10 rounded-xl bg-background/80 border-border shadow-xs">
+                      <FileSpreadsheet className="h-3.5 w-3.5 text-primary mr-1" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      <SelectItem value="summary">Summary</SelectItem>
+                      <SelectItem value="settlement">Settlement</SelectItem>
+                      <SelectItem value="refunds">Refunds</SelectItem>
+                      <SelectItem value="audit">Audit Log</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {activeFiltersCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-[11px] font-medium text-primary">
+                    {activeFiltersCount} active
+                  </span>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={resetFilters}
-                  className="h-9 rounded-full text-muted-foreground hover:text-foreground"
+                  className="h-10 rounded-xl text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5 mr-1" />
                   Reset
                 </Button>
-
-                <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
-
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 rounded-full gap-1.5 shadow-xs"
-                  onClick={() => toast.success("Refreshed report list")}
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className={cn(
+                    "h-10 rounded-xl gap-2 px-5 gradient-primary text-primary-foreground border-0 shadow-glow",
+                    "hover:translate-y-[-1px] hover:shadow-floating active:translate-y-0 transition-all",
+                    "disabled:opacity-80 disabled:translate-y-0"
+                  )}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Refresh
-                </Button>
-
-                <Button
-                  size="sm"
-                  onClick={() => toast.success("Report generation started")}
-                  className="h-9 rounded-full gap-1.5 px-4 gradient-primary text-primary-foreground border-0 shadow-glow hover:translate-y-[-1px] hover:shadow-floating active:translate-y-0 transition-all"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Generate Report
+                  {generating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Generate Report
+                    </>
+                  )}
                 </Button>
               </div>
+            </div>
+          </div>
+
+          {/* History Card */}
+          <div className="relative rounded-2xl border border-border bg-card/70 backdrop-blur-xl shadow-elevated overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-5 md:p-6 border-b border-border/70">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">Reports Generation History</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {filtered.length} report{filtered.length === 1 ? "" : "s"} for {tab}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-full gap-1.5 shadow-xs self-start sm:self-auto"
+                onClick={() => toast.success("Refreshed report list")}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Refresh
+              </Button>
             </div>
 
             {/* Table */}
             <div className="relative overflow-x-auto">
-              <div className="min-w-[920px]">
-                {/* Header row */}
-                <div className="grid grid-cols-[1.2fr_1fr_1.4fr_1.6fr_0.9fr_0.7fr] gap-4 px-5 md:px-6 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/70 bg-muted/30">
-                  <div>Created By</div>
-                  <div>Date &amp; Time</div>
-                  <div>Recipient Email</div>
-                  <div>Description</div>
+              <div className="min-w-[1080px]">
+                <div className="grid grid-cols-[1.1fr_1fr_1.2fr_1.3fr_1.2fr_0.9fr_0.8fr] gap-4 px-5 md:px-6 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/70 bg-muted/30">
+                  <div>Generated By</div>
+                  <div>Generated At</div>
+                  <div>Date Range</div>
+                  <div>Recipient / Description</div>
+                  <div>Type</div>
                   <div>Status</div>
                   <div className="text-right">Action</div>
                 </div>
 
-                {/* Rows */}
-                <div className="p-3 md:p-4 space-y-2">
-                  {pageRows.length === 0 && (
-                    <div className="py-16 text-center text-sm text-muted-foreground">
-                      No reports found for the selected filters.
-                    </div>
+                <div className="p-3 md:p-4 space-y-2 min-h-[280px]">
+                  {pageRows.length === 0 ? (
+                    <EmptyState onGenerate={handleGenerate} />
+                  ) : (
+                    pageRows.map((r) => (
+                      <ReportCardRow
+                        key={r.id}
+                        row={r}
+                        onDownload={() => downloadExcel(r)}
+                        onRetry={() => handleRetry(r)}
+                      />
+                    ))
                   )}
-                  {pageRows.map((r) => (
-                    <ReportCardRow key={r.id} row={r} />
-                  ))}
                 </div>
               </div>
             </div>
 
             {/* Pagination */}
-            <div className="relative flex items-center justify-between gap-3 px-5 md:px-6 py-4 border-t border-border/70 bg-muted/20">
-              <div className="text-xs text-muted-foreground">
-                Showing <span className="font-medium text-foreground">{pageRows.length}</span> of{" "}
-                <span className="font-medium text-foreground">{filtered.length}</span> reports
+            {filtered.length > 0 && (
+              <div className="relative flex items-center justify-between gap-3 px-5 md:px-6 py-4 border-t border-border/70 bg-muted/20">
+                <div className="text-xs text-muted-foreground">
+                  Showing <span className="font-medium text-foreground">{pageRows.length}</span> of{" "}
+                  <span className="font-medium text-foreground">{filtered.length}</span> reports
+                </div>
+                <Pagination page={page} totalPages={totalPages} onChange={setPage} />
               </div>
-              <Pagination page={page} totalPages={totalPages} onChange={setPage} />
-            </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
@@ -246,24 +534,39 @@ export default function Reports() {
   );
 }
 
-function ReportCardRow({ row }: { row: ReportRow }) {
+function ReportCardRow({
+  row,
+  onDownload,
+  onRetry,
+}: {
+  row: ReportRow;
+  onDownload: () => void;
+  onRetry: () => void;
+}) {
+  const isProcessing = row.status === "Processing";
   return (
     <div
       className={cn(
-        "group relative grid grid-cols-[1.2fr_1fr_1.4fr_1.6fr_0.9fr_0.7fr] gap-4 items-center",
+        "group relative grid grid-cols-[1.1fr_1fr_1.2fr_1.3fr_1.2fr_0.9fr_0.8fr] gap-4 items-center",
         "rounded-xl border border-border/70 bg-card px-4 py-3.5",
         "shadow-xs hover:shadow-elevated hover:border-primary/30 hover:-translate-y-[1px]",
         "transition-all duration-300 overflow-hidden"
       )}
     >
-      {/* Shine sweep */}
+      {isProcessing && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_30%,hsl(var(--primary)/0.08)_50%,transparent_70%)] bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]"
+          style={{ animation: "shimmer 2s linear infinite" }}
+        />
+      )}
       <span
         aria-hidden
         className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-primary/10 to-transparent opacity-0 group-hover:opacity-100 group-hover:translate-x-[400%] transition-all duration-700 ease-out"
       />
 
       {/* Created By */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="relative flex items-center gap-3 min-w-0">
         <span className="h-9 w-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
           {row.initials}
         </span>
@@ -273,44 +576,80 @@ function ReportCardRow({ row }: { row: ReportRow }) {
         </div>
       </div>
 
-      {/* Date */}
-      <div className="text-sm">
-        <div className="font-medium">{row.date}</div>
-        <div className="text-[11px] text-muted-foreground">{row.time}</div>
+      {/* Generated At */}
+      <div className="relative text-sm min-w-0">
+        <div className="font-medium truncate">{format(row.createdAt, "MMM dd, yyyy")}</div>
+        <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          {format(row.createdAt, "HH:mm")}
+        </div>
       </div>
 
-      {/* Email pill */}
-      <div className="min-w-0">
-        <span className="inline-flex items-center gap-1.5 max-w-full rounded-full border border-border/70 bg-muted/50 backdrop-blur px-2.5 py-1 text-xs text-foreground/90">
-          <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
-          <span className="truncate">{row.email}</span>
+      {/* Date Range */}
+      <div className="relative min-w-0">
+        <span className="inline-flex items-center gap-1.5 max-w-full rounded-full border border-border/70 bg-muted/50 px-2.5 py-1 text-xs">
+          <CalendarRange className="h-3 w-3 text-muted-foreground shrink-0" />
+          <span className="truncate">{fmtRange(row.range)}</span>
         </span>
       </div>
 
-      {/* Description */}
-      <div className="text-sm text-foreground/90 truncate" title={row.description}>
-        {row.description}
+      {/* Recipient / Description */}
+      <div className="relative min-w-0">
+        <div className="text-sm text-foreground/90 truncate" title={row.description}>
+          {row.description}
+        </div>
+        <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1 mt-0.5">
+          <Mail className="h-3 w-3" />
+          <span className="truncate">{row.email}</span>
+        </div>
+        {row.status === "Failed" && row.failureReason && (
+          <div className="text-[11px] text-destructive/80 mt-0.5 truncate" title={row.failureReason}>
+            {row.failureReason}
+          </div>
+        )}
+      </div>
+
+      {/* Type */}
+      <div className="relative">
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/8 border border-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+          <FileSpreadsheet className="h-3 w-3" />
+          {CATEGORY_LABEL[row.category]}
+        </span>
       </div>
 
       {/* Status */}
-      <div>
+      <div className="relative">
         <StatusPill status={row.status} />
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-1">
-        <button
-          className="h-8 w-8 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-          title="Download"
-        >
-          <Download className="h-3.5 w-3.5 transition-transform group-hover:translate-y-[1px]" />
-        </button>
-        <button
-          className="h-8 w-8 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-          title="Retry"
-        >
-          <RotateCw className="h-3.5 w-3.5 transition-transform duration-500 hover:rotate-180" />
-        </button>
+      <div className="relative flex items-center justify-end gap-1">
+        {row.status === "Success" && (
+          <button
+            onClick={onDownload}
+            className="h-8 px-2.5 rounded-full inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 hover:shadow-glow transition-all"
+            title="Download Excel"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline">Excel</span>
+          </button>
+        )}
+        {row.status === "Failed" && (
+          <button
+            onClick={onRetry}
+            className="h-8 px-2.5 rounded-full inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/15 transition-all"
+            title="Retry"
+          >
+            <RotateCw className="h-3.5 w-3.5 transition-transform group-hover:rotate-180 duration-500" />
+            <span className="hidden xl:inline">Retry</span>
+          </button>
+        )}
+        {row.status === "Processing" && (
+          <span className="h-8 px-2.5 rounded-full inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/60">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span className="hidden xl:inline">Working</span>
+          </span>
+        )}
       </div>
     </div>
   );
@@ -325,11 +664,47 @@ function StatusPill({ status }: { status: ReportStatus }) {
       </span>
     );
   }
+  if (status === "Failed") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/20 bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive">
+        <XCircle className="h-3 w-3" />
+        Failed
+      </span>
+    );
+  }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/20 bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive">
-      <XCircle className="h-3 w-3" />
-      Failed
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+      </span>
+      Processing
     </span>
+  );
+}
+
+function EmptyState({ onGenerate }: { onGenerate: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-14 px-6">
+      <div className="relative mb-4">
+        <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl" />
+        <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-glow">
+          <Inbox className="h-7 w-7 text-primary" />
+        </div>
+      </div>
+      <h3 className="text-base font-semibold">No reports generated yet</h3>
+      <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+        Pick a date range and filters above, then generate your first report. It will appear here when ready.
+      </p>
+      <Button
+        size="sm"
+        onClick={onGenerate}
+        className="mt-4 h-9 rounded-full gap-1.5 px-4 gradient-primary text-primary-foreground border-0 shadow-glow hover:translate-y-[-1px] hover:shadow-floating transition-all"
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+        Generate your first report
+      </Button>
+    </div>
   );
 }
 
