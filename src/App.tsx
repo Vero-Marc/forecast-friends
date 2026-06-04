@@ -14,6 +14,7 @@ import OrganizationDetail from "./pages/OrganizationDetail";
 import CreateVA from "./pages/CreateVA";
 import UpdateVA from "./pages/UpdateVA";
 import Reports from "./pages/Reports";
+import Settlements from "./pages/Settlements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/organizations/:id/va/new" element={<CreateVA />} />
             <Route path="/organizations/:id/va/:vaId" element={<UpdateVA />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/payins/settlements" element={<Settlements />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
