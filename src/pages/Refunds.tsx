@@ -31,7 +31,9 @@ export default function Refunds() {
   }, [applied]);
 
   useEffect(() => {
-    if (selectedId && !filtered.find((m) => m.id === selectedId)) setSelectedId(null);
+    if (selectedId && !filtered.find((m) => m.id === selectedId)) {
+      setSelectedId(filtered[0]?.id ?? null);
+    }
   }, [filtered, selectedId]);
 
   const selected = filtered.find((m) => m.id === selectedId) ?? null;
