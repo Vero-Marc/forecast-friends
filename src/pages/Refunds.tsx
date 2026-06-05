@@ -137,62 +137,68 @@ export default function Refunds() {
         </Card>
 
         {/* Right side panel */}
-        {selected && (
-          <Card className="surface-card h-fit sticky top-4">
-            <CardContent className="p-4 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
-                  {initials(selected.name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{selected.name}</div>
-                </div>
-                <RefundBadge status={selected.status} />
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t">
-                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">LINKED VIRTUAL ACCOUNTS</span>
-                <span className="text-xs font-medium text-muted-foreground">{selected.vas.length}</span>
-              </div>
-
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9 h-9" placeholder="Search by account or bank…" value={vaSearch} onChange={(e) => setVaSearch(e.target.value)} />
-              </div>
-
-              <div className="space-y-2 max-h-[480px] overflow-auto pr-1">
-                {vas.length === 0 && (
-                  <div className="text-center text-xs text-muted-foreground py-8">No virtual accounts.</div>
-                )}
-                {vas.map((v) => (
-                  <div key={v.vaNo} className="flex items-center gap-3 p-2.5 rounded-lg border bg-card hover:bg-muted/40 transition-colors">
-                    <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center">
-                      <Landmark className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{v.bank}</div>
-                      <div className="text-[11px] text-muted-foreground font-mono truncate">{v.vaNo}</div>
-                    </div>
-                    <RefundBadge status={v.status} />
-                    <Link to={`/payins/refunds/${v.vaNo}`}>
-                      <Button size="icon" variant="ghost"><Eye className="h-4 w-4" /></Button>
-                    </Link>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        navigator.clipboard.writeText(v.vaNo);
-                        toast({ title: "Copied", description: `${v.vaNo} copied to clipboard.` });
-                      }}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+        <Card className="surface-card h-fit sticky top-4">
+          <CardContent className="p-4 space-y-4">
+            {selected ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                    {initials(selected.name)}
                   </div>
-                ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{selected.name}</div>
+                  </div>
+                  <RefundBadge status={selected.status} />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">LINKED VIRTUAL ACCOUNTS</span>
+                  <span className="text-xs font-medium text-muted-foreground">{selected.vas.length}</span>
+                </div>
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input className="pl-9 h-9" placeholder="Search by account or bank…" value={vaSearch} onChange={(e) => setVaSearch(e.target.value)} />
+                </div>
+
+                <div className="space-y-2 max-h-[480px] overflow-auto pr-1">
+                  {vas.length === 0 && (
+                    <div className="text-center text-xs text-muted-foreground py-8">No virtual accounts.</div>
+                  )}
+                  {vas.map((v) => (
+                    <div key={v.vaNo} className="flex items-center gap-3 p-2.5 rounded-lg border bg-card hover:bg-muted/40 transition-colors">
+                      <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center">
+                        <Landmark className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{v.bank}</div>
+                        <div className="text-[11px] text-muted-foreground font-mono truncate">{v.vaNo}</div>
+                      </div>
+                      <RefundBadge status={v.status} />
+                      <Link to={`/payins/refunds/${v.vaNo}`}>
+                        <Button size="icon" variant="ghost"><Eye className="h-4 w-4" /></Button>
+                      </Link>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          navigator.clipboard.writeText(v.vaNo);
+                          toast({ title: "Copied", description: `${v.vaNo} copied to clipboard.` });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center text-sm text-muted-foreground py-16">
+                Select a merchant to view virtual accounts.
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
