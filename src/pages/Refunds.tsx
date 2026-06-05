@@ -94,8 +94,8 @@ export default function Refunds() {
             {pageData.map((m) => {
               const isOpen = !!expanded[m.id];
               return (
-                <>
-                  <TableRow key={m.id} className="cursor-pointer hover:bg-muted/40" onClick={() => setExpanded((p) => ({ ...p, [m.id]: !p[m.id] }))}>
+                <FragmentRow key={m.id}>
+                  <TableRow className="cursor-pointer hover:bg-muted/40" onClick={() => setExpanded((p) => ({ ...p, [m.id]: !p[m.id] }))}>
                     <TableCell>
                       <ChevronRight className={cn("h-4 w-4 transition-transform text-muted-foreground", isOpen && "rotate-90")} />
                     </TableCell>
