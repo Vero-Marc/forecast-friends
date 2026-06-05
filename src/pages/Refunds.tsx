@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, RotateCcw, Filter, Building2, Eye, Copy, X, Landmark } from "lucide-react";
+import { Search, RotateCcw, Filter, Eye, Copy, Landmark } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ export default function Refunds() {
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [applied, setApplied] = useState({ status: "all", search: "" });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(merchants[0]?.id ?? null);
   const [vaSearch, setVaSearch] = useState("");
 
   const filtered = useMemo(() => {
