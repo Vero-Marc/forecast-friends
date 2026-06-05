@@ -24,6 +24,7 @@ const titleMap: Record<string, string> = {
   "/users": "User Management",
   "/payins": "Payins Service",
   "/payins/settlements": "Settlements",
+  "/payins/refunds": "Refunds",
   "/payouts": "Payouts Service",
 };
 
