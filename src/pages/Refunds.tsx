@@ -1,6 +1,6 @@
-import { Fragment as FragmentRow, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Search, RotateCcw, Filter } from "lucide-react";
+import { Search, RotateCcw, Filter, GripVertical, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,14 +10,11 @@ import { merchants, formatCurrency } from "@/data/refundsMock";
 import { RefundBadge } from "@/components/refunds/RefundBadge";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 10;
-
 export default function Refunds() {
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [applied, setApplied] = useState({ status: "all", search: "" });
-  const [page, setPage] = useState(1);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return merchants.filter((m) => {
@@ -27,14 +24,44 @@ export default function Refunds() {
     });
   }, [applied]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageData = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  useEffect(() => {
+    if (filtered.length && !filtered.find((m) => m.id === selectedId)) {
+      setSelectedId(filtered[0].id);
+    }
+  }, [filtered, selectedId]);
+
+  const selected = filtered.find((m) => m.id === selectedId) ?? null;
+
+  // Split panel drag
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [leftPct, setLeftPct] = useState(58);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!draggingRef.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftPct(Math.min(80, Math.max(30, pct)));
+    }
+    function onUp() {
+      draggingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Payins / Refunds</h1>
-        <p className="text-sm text-muted-foreground mt-1">Browse merchants and their virtual accounts to manage refunds.</p>
+        <p className="text-sm text-muted-foreground mt-1">Select a merchant to view their virtual accounts. Drag the divider to resize.</p>
       </div>
 
       <Card className="surface-card">
@@ -61,10 +88,10 @@ export default function Refunds() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => { setApplied({ status, search }); setPage(1); }}>
+            <Button onClick={() => setApplied({ status, search })}>
               <Filter className="h-4 w-4 mr-2" />Apply Filters
             </Button>
-            <Button variant="ghost" onClick={() => { setStatus("all"); setSearch(""); setApplied({ status: "all", search: "" }); setPage(1); }}>
+            <Button variant="ghost" onClick={() => { setStatus("all"); setSearch(""); setApplied({ status: "all", search: "" }); }}>
               <RotateCcw className="h-4 w-4 mr-2" />Reset
             </Button>
           </div>
@@ -72,95 +99,111 @@ export default function Refunds() {
       </Card>
 
       <Card className="surface-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10" />
-              <TableHead>Merchant Name</TableHead>
-              <TableHead>Merchant ID</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Total VAs</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageData.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-16 text-muted-foreground">
-                  No merchants match the current filters.
-                </TableCell>
-              </TableRow>
-            )}
-            {pageData.map((m) => {
-              const isOpen = !!expanded[m.id];
-              return (
-                <FragmentRow key={m.id}>
-                  <TableRow className="cursor-pointer hover:bg-muted/40" onClick={() => setExpanded((p) => ({ ...p, [m.id]: !p[m.id] }))}>
-                    <TableCell>
-                      <ChevronRight className={cn("h-4 w-4 transition-transform text-muted-foreground", isOpen && "rotate-90")} />
-                    </TableCell>
-                    <TableCell className="font-medium">{m.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{m.id}</TableCell>
-                    <TableCell><RefundBadge status={m.status} /></TableCell>
-                    <TableCell>{m.vas.length}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setExpanded((p) => ({ ...p, [m.id]: !p[m.id] })); }}>
-                        {isOpen ? "Hide VAs" : "View VAs"}
-                      </Button>
+        <div
+          ref={containerRef}
+          className="relative flex w-full select-none"
+          style={{ minHeight: 520 }}
+        >
+          {/* Left: Merchant table */}
+          <div className="overflow-auto" style={{ width: `${leftPct}%` }}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Merchant</TableHead>
+                  <TableHead>Merchant ID</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">VAs</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-16 text-muted-foreground">
+                      No merchants match the current filters.
                     </TableCell>
                   </TableRow>
-                  {isOpen && (
-                    <TableRow key={m.id + "-sub"} className="bg-muted/20 hover:bg-muted/20">
-                      <TableCell colSpan={6} className="p-0">
-                        <div className="px-6 py-4">
-                          <div className="rounded-md border bg-card overflow-hidden">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>VA Number</TableHead>
-                                  <TableHead>VA Label</TableHead>
-                                  <TableHead>Bank</TableHead>
-                                  <TableHead>Currency</TableHead>
-                                  <TableHead>Balance</TableHead>
-                                  <TableHead>Status</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {m.vas.map((v, i) => (
-                                  <TableRow key={v.vaNo} className={i % 2 === 1 ? "bg-muted/30" : ""}>
-                                    <TableCell>
-                                      <Link to={`/payins/refunds/${v.vaNo}`} className="text-primary font-medium hover:underline">
-                                        {v.vaNo}
-                                      </Link>
-                                    </TableCell>
-                                    <TableCell>{v.label}</TableCell>
-                                    <TableCell>{v.bank}</TableCell>
-                                    <TableCell>{v.currency}</TableCell>
-                                    <TableCell>{formatCurrency(v.balance)}</TableCell>
-                                    <TableCell><RefundBadge status={v.status} /></TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </div>
-                      </TableCell>
+                )}
+                {filtered.map((m) => {
+                  const active = m.id === selectedId;
+                  return (
+                    <TableRow
+                      key={m.id}
+                      onClick={() => setSelectedId(m.id)}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        active ? "bg-primary/10 hover:bg-primary/10" : "hover:bg-muted/40"
+                      )}
+                    >
+                      <TableCell className={cn("font-medium", active && "text-primary")}>{m.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{m.id}</TableCell>
+                      <TableCell><RefundBadge status={m.status} /></TableCell>
+                      <TableCell className="text-right">{m.vas.length}</TableCell>
                     </TableRow>
-                  )}
-                </FragmentRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-
-        <div className="flex items-center justify-between px-4 py-3 border-t">
-          <div className="text-xs text-muted-foreground">
-            Showing {pageData.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{(page - 1) * PAGE_SIZE + pageData.length} of {filtered.length}
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
-            <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+
+          {/* Drag handle */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            onMouseDown={() => {
+              draggingRef.current = true;
+              document.body.style.cursor = "col-resize";
+              document.body.style.userSelect = "none";
+            }}
+            className="group relative w-1.5 cursor-col-resize bg-border hover:bg-primary/40 transition-colors"
+          >
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-5 rounded-md border bg-card flex items-center justify-center shadow-sm group-hover:border-primary/40">
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+          </div>
+
+          {/* Right: VA list */}
+          <div className="flex-1 overflow-auto bg-muted/10">
+            {selected ? (
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2 px-2 pb-2 border-b">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold">
+                    {selected.name} <span className="text-muted-foreground font-normal">— virtual accounts</span>
+                  </h3>
+                  <RefundBadge status={selected.status} className="ml-auto" />
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>VA Number</TableHead>
+                      <TableHead>Label</TableHead>
+                      <TableHead>Bank</TableHead>
+                      <TableHead className="text-right">Balance</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selected.vas.map((v, i) => (
+                      <TableRow key={v.vaNo} className={i % 2 === 1 ? "bg-muted/30" : ""}>
+                        <TableCell>
+                          <Link to={`/payins/refunds/${v.vaNo}`} className="text-primary font-medium hover:underline">
+                            {v.vaNo}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate">{v.label}</TableCell>
+                        <TableCell className="text-muted-foreground">{v.bank}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(v.balance)}</TableCell>
+                        <TableCell className="text-right"><RefundBadge status={v.status} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                Select a merchant to view virtual accounts
+              </div>
+            )}
           </div>
         </div>
       </Card>
