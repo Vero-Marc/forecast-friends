@@ -158,9 +158,6 @@ export default function Refunds() {
                   <div className="font-medium truncate">{selected.name}</div>
                 </div>
                 <RefundBadge status={selected.status} />
-                <Button size="icon" variant="ghost" onClick={() => setSelectedId(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t">
