@@ -41,6 +41,9 @@ const App = () => (
             <Route path="/organizations/:id/va/:vaId" element={<UpdateVA />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/payins/settlements" element={<Settlements />} />
+            <Route path="/payins/refunds" element={<Refunds />} />
+            <Route path="/payins/refunds/:vaNo" element={<RefundsByVA />} />
+            <Route path="/payins/refunds/:vaNo/:refundId" element={<RefundDetail />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
