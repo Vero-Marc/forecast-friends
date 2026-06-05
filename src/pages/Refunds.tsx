@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, RotateCcw, Filter, Building2, Eye, Copy, X, Landmark } from "lucide-react";
+import { Search, RotateCcw, Filter, Eye, Copy, Landmark } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ export default function Refunds() {
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [applied, setApplied] = useState({ status: "all", search: "" });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(merchants[0]?.id ?? null);
   const [vaSearch, setVaSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -31,7 +31,9 @@ export default function Refunds() {
   }, [applied]);
 
   useEffect(() => {
-    if (selectedId && !filtered.find((m) => m.id === selectedId)) setSelectedId(null);
+    if (selectedId && !filtered.find((m) => m.id === selectedId)) {
+      setSelectedId(filtered[0]?.id ?? null);
+    }
   }, [filtered, selectedId]);
 
   const selected = filtered.find((m) => m.id === selectedId) ?? null;
@@ -85,30 +87,26 @@ export default function Refunds() {
         </CardContent>
       </Card>
 
-      <div className={cn("grid gap-6", selected ? "grid-cols-1 lg:grid-cols-[1fr_380px]" : "grid-cols-1")}>
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1fr_520px]">
         {/* Merchant table */}
         <Card className="surface-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
                 <TableHead>MERCHANT</TableHead>
-                <TableHead>ONBOARDED</TableHead>
                 <TableHead>STATUS</TableHead>
-                <TableHead className="text-right">ACCOUNTS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-16 text-muted-foreground">
+                  <TableCell colSpan={2} className="text-center py-16 text-muted-foreground">
                     No merchants match the current filters.
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map((m, idx) => {
+              {filtered.map((m) => {
                 const active = m.id === selectedId;
-                const onboarded = new Date(2024, (idx * 3) % 12, ((idx * 7) % 27) + 1)
-                  .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                 return (
                   <TableRow
                     key={m.id}
@@ -130,13 +128,7 @@ export default function Refunds() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{onboarded}</TableCell>
                     <TableCell><RefundBadge status={m.status} /></TableCell>
-                    <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedId(m.id); }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -145,65 +137,68 @@ export default function Refunds() {
         </Card>
 
         {/* Right side panel */}
-        {selected && (
-          <Card className="surface-card h-fit sticky top-4">
-            <CardContent className="p-4 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
-                  {initials(selected.name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{selected.name}</div>
-                </div>
-                <RefundBadge status={selected.status} />
-                <Button size="icon" variant="ghost" onClick={() => setSelectedId(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t">
-                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">LINKED VIRTUAL ACCOUNTS</span>
-                <span className="text-xs font-medium text-muted-foreground">{selected.vas.length}</span>
-              </div>
-
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9 h-9" placeholder="Search by account or bank…" value={vaSearch} onChange={(e) => setVaSearch(e.target.value)} />
-              </div>
-
-              <div className="space-y-2 max-h-[480px] overflow-auto pr-1">
-                {vas.length === 0 && (
-                  <div className="text-center text-xs text-muted-foreground py-8">No virtual accounts.</div>
-                )}
-                {vas.map((v) => (
-                  <div key={v.vaNo} className="flex items-center gap-3 p-2.5 rounded-lg border bg-card hover:bg-muted/40 transition-colors">
-                    <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center">
-                      <Landmark className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{v.bank}</div>
-                      <div className="text-[11px] text-muted-foreground font-mono truncate">{v.vaNo}</div>
-                    </div>
-                    <RefundBadge status={v.status} />
-                    <Link to={`/payins/refunds/${v.vaNo}`}>
-                      <Button size="icon" variant="ghost"><Eye className="h-4 w-4" /></Button>
-                    </Link>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        navigator.clipboard.writeText(v.vaNo);
-                        toast({ title: "Copied", description: `${v.vaNo} copied to clipboard.` });
-                      }}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+        <Card className="surface-card h-fit sticky top-4">
+          <CardContent className="p-4 space-y-4">
+            {selected ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                    {initials(selected.name)}
                   </div>
-                ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{selected.name}</div>
+                  </div>
+                  <RefundBadge status={selected.status} />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">LINKED VIRTUAL ACCOUNTS</span>
+                  <span className="text-xs font-medium text-muted-foreground">{selected.vas.length}</span>
+                </div>
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input className="pl-9 h-9" placeholder="Search by account or bank…" value={vaSearch} onChange={(e) => setVaSearch(e.target.value)} />
+                </div>
+
+                <div className="space-y-2 max-h-[480px] overflow-auto pr-1">
+                  {vas.length === 0 && (
+                    <div className="text-center text-xs text-muted-foreground py-8">No virtual accounts.</div>
+                  )}
+                  {vas.map((v) => (
+                    <div key={v.vaNo} className="flex items-center gap-3 p-2.5 rounded-lg border bg-card hover:bg-muted/40 transition-colors">
+                      <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center">
+                        <Landmark className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{v.bank}</div>
+                        <div className="text-[11px] text-muted-foreground font-mono truncate">{v.vaNo}</div>
+                      </div>
+                      <RefundBadge status={v.status} />
+                      <Link to={`/payins/refunds/${v.vaNo}`}>
+                        <Button size="icon" variant="ghost"><Eye className="h-4 w-4" /></Button>
+                      </Link>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          navigator.clipboard.writeText(v.vaNo);
+                          toast({ title: "Copied", description: `${v.vaNo} copied to clipboard.` });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center text-sm text-muted-foreground py-16">
+                Select a merchant to view virtual accounts.
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
