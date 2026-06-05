@@ -87,30 +87,26 @@ export default function Refunds() {
         </CardContent>
       </Card>
 
-      <div className={cn("grid gap-6", selected ? "grid-cols-1 lg:grid-cols-[1fr_380px]" : "grid-cols-1")}>
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1fr_520px]">
         {/* Merchant table */}
         <Card className="surface-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
                 <TableHead>MERCHANT</TableHead>
-                <TableHead>ONBOARDED</TableHead>
                 <TableHead>STATUS</TableHead>
-                <TableHead className="text-right">ACCOUNTS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-16 text-muted-foreground">
+                  <TableCell colSpan={2} className="text-center py-16 text-muted-foreground">
                     No merchants match the current filters.
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map((m, idx) => {
+              {filtered.map((m) => {
                 const active = m.id === selectedId;
-                const onboarded = new Date(2024, (idx * 3) % 12, ((idx * 7) % 27) + 1)
-                  .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                 return (
                   <TableRow
                     key={m.id}
@@ -132,13 +128,7 @@ export default function Refunds() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{onboarded}</TableCell>
                     <TableCell><RefundBadge status={m.status} /></TableCell>
-                    <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedId(m.id); }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 );
               })}
