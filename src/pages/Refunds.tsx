@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment as FragmentRow, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Search, RotateCcw, Filter } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -147,7 +147,7 @@ export default function Refunds() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </FragmentRow>
               );
             })}
           </TableBody>
