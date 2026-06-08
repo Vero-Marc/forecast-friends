@@ -110,7 +110,7 @@ export default function SurpassLayout() {
         <div className="flex flex-col lg:flex-row gap-6">
           <SidenavInner />
           <main className="flex-1 min-w-0">
-            <div key={location.pathname} className="animate-fade-in">
+            <div className="animate-fade-in">
               <Outlet />
             </div>
           </main>
