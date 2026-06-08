@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,16 +7,25 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Stepper } from "@/components/common/Stepper";
-import { Store, Handshake, Users, CheckCircle2, ArrowLeft, ArrowRight, Sparkles, LayoutGrid, ClipboardList, FileCheck2 } from "lucide-react";
+import {
+  Store, Handshake, Users, CheckCircle2, ArrowLeft, ArrowRight, Sparkles,
+  LayoutGrid, ClipboardList, Building2, Banknote, FileText, Plug, FileCheck2,
+  Upload, Trash2, Download,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Category } from "@/data/mockData";
+import { StatusBadge } from "@/components/common/StatusBadge";
 
 const steps = [
-  { title: "Category", description: "Choose org type", icon: LayoutGrid },
+  { title: "Category", description: "Org type", icon: LayoutGrid },
   { title: "Details", description: "Basic info", icon: ClipboardList },
-  { title: "Review", description: "Confirm & submit", icon: FileCheck2 },
+  { title: "KYB", description: "Business", icon: Building2 },
+  { title: "Account", description: "Banking", icon: Banknote },
+  { title: "Documents", description: "Uploads", icon: FileText },
+  { title: "Integration", description: "API", icon: Plug },
+  { title: "Review", description: "Submit", icon: FileCheck2 },
 ];
 
 const categories: { id: Category; title: string; description: string; icon: any }[] = [
@@ -32,21 +41,35 @@ export default function CreateOrganization() {
   const [form, setForm] = useState({
     name: "", phone: "", email: "", businessType: "",
     serviceType: "", bankPipeline: "", affiliateId: "",
+    // KYB
+    legalName: "", regNumber: "", taxId: "", country: "us",
+    address: "", city: "", state: "", postal: "",
+    // Bank
+    holder: "", accNo: "", accNo2: "", bank: "", branch: "", ifsc: "",
+    // Integration
+    webhook: "",
   });
   const update = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
-  const canContinue = step === 0 ? !!category : step === 1 ? !!form.name && !!form.email : true;
+  const canContinue =
+    step === 0 ? !!category :
+    step === 1 ? !!form.name && !!form.email :
+    step === 2 ? !!form.legalName && !!form.country :
+    step === 3 ? !!form.accNo && form.accNo === form.accNo2 :
+    true;
 
   const submit = () => {
     toast.success("Organization submitted for review");
-    navigate("/onboarding");
+    navigate("/onboarding/in-review");
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Create organization</h1>
-        <p className="text-sm text-muted-foreground mt-1">Complete the steps below to start onboarding a new entity.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Complete every step to onboard the entity. Drafts are auto-saved.
+        </p>
       </div>
 
       <Card className="surface-card">
@@ -55,6 +78,7 @@ export default function CreateOrganization() {
         </CardContent>
       </Card>
 
+      {/* STEP 0 — CATEGORY */}
       {step === 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {categories.map((c) => {
@@ -90,6 +114,7 @@ export default function CreateOrganization() {
         </div>
       )}
 
+      {/* STEP 1 — DETAILS */}
       {step === 1 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="surface-card">
@@ -119,7 +144,6 @@ export default function CreateOrganization() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Used to determine compliance requirements.</p>
               </div>
             </CardContent>
           </Card>
@@ -172,7 +196,162 @@ export default function CreateOrganization() {
         </div>
       )}
 
+      {/* STEP 2 — KYB */}
       {step === 2 && (
+        <Card className="surface-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" /> Know Your Business
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Business legal name <span className="text-destructive">*</span></Label>
+                <Input value={form.legalName} onChange={(e) => update("legalName", e.target.value)} placeholder={form.name || "Legal entity name"} />
+              </div>
+              <div className="space-y-1.5"><Label>Registration number</Label>
+                <Input value={form.regNumber} onChange={(e) => update("regNumber", e.target.value)} placeholder="REG-009211" />
+              </div>
+              <div className="space-y-1.5"><Label>GST / Tax ID</Label>
+                <Input value={form.taxId} onChange={(e) => update("taxId", e.target.value)} placeholder="GST-22AAAAA0000A1Z5" />
+              </div>
+              <div className="space-y-1.5"><Label>Country</Label>
+                <Select value={form.country} onValueChange={(v) => update("country", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="us">United States</SelectItem>
+                    <SelectItem value="uk">United Kingdom</SelectItem>
+                    <SelectItem value="in">India</SelectItem>
+                    <SelectItem value="sg">Singapore</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2"><Label>Address line</Label>
+                <Input value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Street, Suite #" />
+              </div>
+              <div className="space-y-1.5"><Label>City</Label>
+                <Input value={form.city} onChange={(e) => update("city", e.target.value)} placeholder="San Francisco" />
+              </div>
+              <div className="space-y-1.5"><Label>State / Province</Label>
+                <Input value={form.state} onChange={(e) => update("state", e.target.value)} placeholder="California" />
+              </div>
+              <div className="space-y-1.5"><Label>Postal code</Label>
+                <Input value={form.postal} onChange={(e) => update("postal", e.target.value)} placeholder="94107" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* STEP 3 — ACCOUNT */}
+      {step === 3 && (
+        <Card className="surface-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Banknote className="h-4 w-4 text-primary" /> Account information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5 sm:col-span-2"><Label>Account holder name</Label>
+                <Input value={form.holder} onChange={(e) => update("holder", e.target.value)} placeholder="As per bank records" />
+              </div>
+              <div className="space-y-1.5"><Label>Account number <span className="text-destructive">*</span></Label>
+                <Input value={form.accNo} onChange={(e) => update("accNo", e.target.value)} placeholder="•••• 1234" />
+              </div>
+              <div className="space-y-1.5"><Label>Confirm account number <span className="text-destructive">*</span></Label>
+                <Input value={form.accNo2} onChange={(e) => update("accNo2", e.target.value)} placeholder="•••• 1234" />
+                {form.accNo && form.accNo2 && form.accNo !== form.accNo2 && (
+                  <p className="text-xs text-destructive">Account numbers don't match.</p>
+                )}
+              </div>
+              <div className="space-y-1.5"><Label>Bank</Label>
+                <Input value={form.bank} onChange={(e) => update("bank", e.target.value)} placeholder="Pinnacle Trust" />
+              </div>
+              <div className="space-y-1.5"><Label>Branch</Label>
+                <Input value={form.branch} onChange={(e) => update("branch", e.target.value)} placeholder="SF Downtown" />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2"><Label>IFSC / Routing number</Label>
+                <Input value={form.ifsc} onChange={(e) => update("ifsc", e.target.value)} placeholder="PINTUS33" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* STEP 4 — DOCUMENTS */}
+      {step === 4 && (
+        <Card className="surface-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" /> Document verification
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {[
+                  { name: "Certificate of Incorporation.pdf", date: "Just now", status: "Pending" },
+                  { name: "Tax Registration.pdf", date: "Just now", status: "Pending" },
+                ].map((f) => (
+                  <div key={f.name} className="flex items-center gap-3 rounded-lg border p-3 bg-card hover:bg-muted/30 transition-colors">
+                    <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center"><FileText className="h-4 w-4" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{f.name}</p>
+                      <p className="text-xs text-muted-foreground">Uploaded {f.date}</p>
+                    </div>
+                    <StatusBadge status={f.status as any} />
+                    <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-lg border-2 border-dashed bg-muted/30 p-8 flex flex-col items-center justify-center text-center">
+                <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3"><Upload className="h-5 w-5" /></div>
+                <p className="font-medium">Drag & drop files</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF, PNG, JPG up to 10MB · multiple supported</p>
+                <Button variant="outline" className="mt-4">Browse files</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* STEP 5 — INTEGRATION */}
+      {step === 5 && (
+        <Card className="surface-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Plug className="h-4 w-4 text-primary" /> Application integration
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-xs text-muted-foreground">Sandbox API key (auto-generated)</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <code className="text-sm font-mono px-2 py-1 rounded bg-background border flex-1 truncate">
+                  sk_test_4f9a82••••••••••••3201
+                </code>
+                <Button variant="outline" size="sm">Copy</Button>
+                <Button variant="outline" size="sm">Rotate</Button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Webhook URL</Label>
+              <div className="flex gap-2">
+                <Input value={form.webhook} onChange={(e) => update("webhook", e.target.value)} placeholder="https://api.acme.com/webhooks/fynnix" />
+                <Button variant="outline">Test</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                We'll deliver events as POST requests signed with your secret.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* STEP 6 — REVIEW */}
+      {step === 6 && (
         <Card className="surface-card">
           <CardContent className="p-6 space-y-5">
             <div className="flex items-center gap-3">
@@ -181,10 +360,10 @@ export default function CreateOrganization() {
               </div>
               <div>
                 <p className="font-semibold">Review submission</p>
-                <p className="text-sm text-muted-foreground">Verify the details below before submitting.</p>
+                <p className="text-sm text-muted-foreground">Verify the details below before submitting for review.</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 ["Category", category],
                 ["Organization", form.name || "—"],
@@ -192,10 +371,16 @@ export default function CreateOrganization() {
                 ["Phone", form.phone || "—"],
                 ["Business type", form.businessType || "—"],
                 ["Service type", form.serviceType || "—"],
+                ["Legal name", form.legalName || "—"],
+                ["Tax ID", form.taxId || "—"],
+                ["Country", form.country.toUpperCase()],
+                ["Account no.", form.accNo ? `•••• ${form.accNo.slice(-4)}` : "—"],
+                ["Bank", form.bank || "—"],
+                ["Webhook", form.webhook || "—"],
               ].map(([k, v]) => (
                 <div key={String(k)} className="rounded-lg border bg-muted/30 p-3">
                   <p className="text-xs text-muted-foreground">{k}</p>
-                  <p className="text-sm font-medium mt-0.5">{v as string}</p>
+                  <p className="text-sm font-medium mt-0.5 truncate">{v as string}</p>
                 </div>
               ))}
             </div>
@@ -207,13 +392,16 @@ export default function CreateOrganization() {
         <Button variant="ghost" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>
           <ArrowLeft className="mr-1.5 h-4 w-4" /> Back
         </Button>
-        {step < steps.length - 1 ? (
-          <Button disabled={!canContinue} onClick={() => setStep((s) => s + 1)} className="gradient-primary text-primary-foreground">
-            Continue <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
-        ) : (
-          <Button onClick={submit} className="gradient-primary text-primary-foreground">Submit for review</Button>
-        )}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => toast.success("Draft saved")}>Save draft</Button>
+          {step < steps.length - 1 ? (
+            <Button disabled={!canContinue} onClick={() => setStep((s) => s + 1)} className="gradient-primary text-primary-foreground">
+              Continue <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={submit} className="gradient-primary text-primary-foreground">Submit for review</Button>
+          )}
+        </div>
       </div>
     </div>
   );
