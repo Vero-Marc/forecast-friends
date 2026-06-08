@@ -37,8 +37,8 @@ export default function Onboarding() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline"><Download className="mr-1.5 h-4 w-4" /> Export</Button>
-          <Button asChild className="gradient-primary text-primary-foreground shadow-soft">
-            <Link to="/onboarding/create"><Plus className="mr-1.5 h-4 w-4" /> Add Organization</Link>
+          <Button asChild className="gradient-primary text-primary-foreground shadow-glow">
+            <Link to="/onboarding/start"><Plus className="mr-1.5 h-4 w-4" /> Add Organization</Link>
           </Button>
         </div>
       </div>
