@@ -10,6 +10,7 @@ import Onboarding from "./pages/Onboarding";
 import InReviewOrganizations from "./pages/InReviewOrganizations";
 import CreateOrganization from "./pages/CreateOrganization";
 import OnboardingDetail from "./pages/OnboardingDetail";
+import ReviewOrganization from "./pages/ReviewOrganization";
 import Organizations from "./pages/Organizations";
 import OrganizationDetail from "./pages/OrganizationDetail";
 import CreateVA from "./pages/CreateVA";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/onboarding/in-review" element={<InReviewOrganizations />} />
             <Route path="/onboarding/create" element={<CreateOrganization />} />
+            <Route path="/onboarding/review/:id" element={<ReviewOrganization />} />
             <Route path="/onboarding/:id" element={<OnboardingDetail />} />
             <Route path="/organizations" element={<Organizations />} />
             <Route path="/organizations/:id" element={<OrganizationDetail />} />

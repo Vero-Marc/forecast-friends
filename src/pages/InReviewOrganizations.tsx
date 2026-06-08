@@ -122,7 +122,9 @@ export default function InReviewOrganizations() {
                     <TableCell className="text-sm text-muted-foreground">{o.createdOn}</TableCell>
                     <TableCell className="text-sm">{o.assignedAdmin}</TableCell>
                     <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="sm"><Link to={`/onboarding/${o.id}`}>Review</Link></Button>
+                      <Button asChild size="sm" className="gradient-primary text-primary-foreground">
+                        <Link to={`/onboarding/review/${o.id}`}>Review</Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
