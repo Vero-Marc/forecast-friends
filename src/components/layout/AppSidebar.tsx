@@ -86,7 +86,9 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
   const isActive = (url: string) =>
-    url === "/" ? pathname === "/" : pathname.startsWith(url);
+    url === "/" ? pathname === "/" :
+    url === "/onboarding" ? pathname === "/onboarding" || pathname.startsWith("/onboarding/") && !pathname.startsWith("/onboarding/in-review") :
+    pathname.startsWith(url);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
     "Payins Service": pathname.startsWith("/payins"),
