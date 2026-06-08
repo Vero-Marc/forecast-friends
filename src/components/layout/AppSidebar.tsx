@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 const primary = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Onboarding", url: "/onboarding", icon: ClipboardList },
+  { title: "In Review", url: "/onboarding/in-review", icon: SearchCheck },
   { title: "Organizations", url: "/organizations", icon: Building2 },
   { title: "Recent Reports", url: "/reports", icon: FileBarChart2 },
 ];

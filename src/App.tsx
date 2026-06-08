@@ -7,6 +7,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
+import InReviewOrganizations from "./pages/InReviewOrganizations";
 import CreateOrganization from "./pages/CreateOrganization";
 import OnboardingDetail from "./pages/OnboardingDetail";
 import Organizations from "./pages/Organizations";
@@ -33,6 +34,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/onboarding/in-review" element={<InReviewOrganizations />} />
             <Route path="/onboarding/create" element={<CreateOrganization />} />
             <Route path="/onboarding/:id" element={<OnboardingDetail />} />
             <Route path="/organizations" element={<Organizations />} />
