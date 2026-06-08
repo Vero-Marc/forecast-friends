@@ -21,7 +21,7 @@ export default function SurpassReview() {
   const sections = [
     {
       title: "Business Details",
-      edit: "/onboarding/surpass/business-details",
+      edit: "/onboarding/surepass/business-details",
       rows: [
         ["Legal name", data.legalName],
         ["Trade name", data.tradeName],
@@ -32,7 +32,7 @@ export default function SurpassReview() {
     },
     {
       title: "KYB",
-      edit: "/onboarding/surpass/kyb",
+      edit: "/onboarding/surepass/kyb",
       rows: [
         ["PAN", data.pan, data.verifications.pan],
         ["CIN", data.cin, data.verifications.mca],
@@ -42,7 +42,7 @@ export default function SurpassReview() {
     },
     {
       title: "Bank",
-      edit: "/onboarding/surpass/bank-accounts",
+      edit: "/onboarding/surepass/bank-accounts",
       rows: [
         ["Account", data.bank.account],
         ["IFSC", data.bank.ifsc],
@@ -51,7 +51,7 @@ export default function SurpassReview() {
     },
     {
       title: "Integration",
-      edit: "/onboarding/surpass/integrations",
+      edit: "/onboarding/surepass/integrations",
       rows: [
         ["Webhook", data.webhook || "—"],
         ["API key", data.apiKey],
@@ -63,7 +63,7 @@ export default function SurpassReview() {
     <SectionWrapper
       title="Review & Submit"
       description="Review every section. Submission locks the data and triggers compliance review."
-      prev="/onboarding/surpass/integrations"
+      prev="/onboarding/surepass/integrations"
     >
       <Card className="p-5 border-success/30 bg-success/5">
         <div className="flex items-center gap-3">

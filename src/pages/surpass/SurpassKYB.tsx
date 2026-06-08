@@ -17,8 +17,8 @@ export default function SurpassKYB() {
     <SectionWrapper
       title="Know Your Business"
       description="Identity & legal status verified across PAN, CIN, GST, and MCA registries."
-      prev="/onboarding/surpass/business-details"
-      next="/onboarding/surpass/kyc"
+      prev="/onboarding/surepass/business-details"
+      next="/onboarding/surepass/kyc"
     >
       <div className="grid md:grid-cols-2 gap-4">
         <VerifyCard

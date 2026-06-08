@@ -17,8 +17,8 @@ export default function SurpassBusiness() {
     <SectionWrapper
       title="Business Details"
       description="Auto-filled from MCA lookup. Edit anything that needs correction before submission."
-      prev="/onboarding/surpass"
-      next="/onboarding/surpass/kyb"
+      prev="/onboarding/surepass"
+      next="/onboarding/surepass/kyb"
     >
       <Card className="p-6 surface-card space-y-5">
         <div className="grid sm:grid-cols-2 gap-4">
