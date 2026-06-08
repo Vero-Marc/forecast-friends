@@ -7,10 +7,20 @@ import AppLayout from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
+import OnboardingStart from "./pages/OnboardingStart";
 import InReviewOrganizations from "./pages/InReviewOrganizations";
 import CreateOrganization from "./pages/CreateOrganization";
 import OnboardingDetail from "./pages/OnboardingDetail";
 import ReviewOrganization from "./pages/ReviewOrganization";
+import SurpassLayout from "./pages/surpass/SurpassLayout";
+import SurpassEntry from "./pages/surpass/SurpassEntry";
+import SurpassBusiness from "./pages/surpass/SurpassBusiness";
+import SurpassKYB from "./pages/surpass/SurpassKYB";
+import SurpassKYC from "./pages/surpass/SurpassKYC";
+import SurpassDocuments from "./pages/surpass/SurpassDocuments";
+import SurpassBank from "./pages/surpass/SurpassBank";
+import SurpassIntegrations from "./pages/surpass/SurpassIntegrations";
+import SurpassReview from "./pages/surpass/SurpassReview";
 import Organizations from "./pages/Organizations";
 import OrganizationDetail from "./pages/OrganizationDetail";
 import CreateVA from "./pages/CreateVA";
@@ -35,8 +45,19 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/onboarding/start" element={<OnboardingStart />} />
             <Route path="/onboarding/in-review" element={<InReviewOrganizations />} />
             <Route path="/onboarding/create" element={<CreateOrganization />} />
+            <Route path="/onboarding/surpass" element={<SurpassLayout />}>
+              <Route index element={<SurpassEntry />} />
+              <Route path="business-details" element={<SurpassBusiness />} />
+              <Route path="kyb" element={<SurpassKYB />} />
+              <Route path="kyc" element={<SurpassKYC />} />
+              <Route path="documents" element={<SurpassDocuments />} />
+              <Route path="bank-accounts" element={<SurpassBank />} />
+              <Route path="integrations" element={<SurpassIntegrations />} />
+              <Route path="review" element={<SurpassReview />} />
+            </Route>
             <Route path="/onboarding/review/:id" element={<ReviewOrganization />} />
             <Route path="/onboarding/:id" element={<OnboardingDetail />} />
             <Route path="/organizations" element={<Organizations />} />
