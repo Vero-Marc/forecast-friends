@@ -165,7 +165,7 @@ export default function SurpassEntry() {
                 Data fetched & verified via third-party APIs.
               </p>
               <Button
-                onClick={() => navigate("/onboarding/surpass/business-details")}
+                onClick={() => navigate("/onboarding/surepass/business-details")}
                 className="gradient-primary text-primary-foreground shadow-glow"
               >
                 Confirm & Continue <ArrowRight className="ml-1.5 h-4 w-4" />

@@ -48,7 +48,7 @@ const App = () => (
             <Route path="/onboarding/start" element={<OnboardingStart />} />
             <Route path="/onboarding/in-review" element={<InReviewOrganizations />} />
             <Route path="/onboarding/create" element={<CreateOrganization />} />
-            <Route path="/onboarding/surpass" element={<SurpassLayout />}>
+            <Route path="/onboarding/surepass" element={<SurpassLayout />}>
               <Route index element={<SurpassEntry />} />
               <Route path="business-details" element={<SurpassBusiness />} />
               <Route path="kyb" element={<SurpassKYB />} />

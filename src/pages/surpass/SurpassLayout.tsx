@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const items: { key: SectionKey; title: string; sub: string; url: string; icon: any }[] = [
-  { key: "lookup", title: "Overview", sub: "Org lookup", url: "/onboarding/surpass", icon: LayoutDashboard },
-  { key: "business", title: "Business Details", sub: "Auto-filled", url: "/onboarding/surpass/business-details", icon: Building2 },
-  { key: "kyb", title: "KYB", sub: "PAN · CIN · GST · MCA", url: "/onboarding/surpass/kyb", icon: ShieldCheck },
-  { key: "kyc", title: "KYC", sub: "Directors · eKYC", url: "/onboarding/surpass/kyc", icon: UserCheck },
-  { key: "documents", title: "Documents", sub: "Smart uploads", url: "/onboarding/surpass/documents", icon: FileText },
-  { key: "bank", title: "Bank Accounts", sub: "Penny drop", url: "/onboarding/surpass/bank-accounts", icon: Banknote },
-  { key: "integration", title: "Integrations", sub: "API · Webhook", url: "/onboarding/surpass/integrations", icon: Plug },
-  { key: "review", title: "Review & Submit", sub: "Final check", url: "/onboarding/surpass/review", icon: FileCheck2 },
+  { key: "lookup", title: "Overview", sub: "Org lookup", url: "/onboarding/surepass", icon: LayoutDashboard },
+  { key: "business", title: "Business Details", sub: "Auto-filled", url: "/onboarding/surepass/business-details", icon: Building2 },
+  { key: "kyb", title: "KYB", sub: "PAN · CIN · GST · MCA", url: "/onboarding/surepass/kyb", icon: ShieldCheck },
+  { key: "kyc", title: "KYC", sub: "Directors · eKYC", url: "/onboarding/surepass/kyc", icon: UserCheck },
+  { key: "documents", title: "Documents", sub: "Smart uploads", url: "/onboarding/surepass/documents", icon: FileText },
+  { key: "bank", title: "Bank Accounts", sub: "Penny drop", url: "/onboarding/surepass/bank-accounts", icon: Banknote },
+  { key: "integration", title: "Integrations", sub: "API · Webhook", url: "/onboarding/surepass/integrations", icon: Plug },
+  { key: "review", title: "Review & Submit", sub: "Final check", url: "/onboarding/surepass/review", icon: FileCheck2 },
 ];
 
 function SidenavInner() {
@@ -41,7 +41,7 @@ function SidenavInner() {
 
         <div className="rounded-xl gradient-primary text-primary-foreground p-4 mb-4 relative overflow-hidden">
           <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-white/15 blur-2xl" />
-          <p className="text-[11px] uppercase tracking-wider opacity-80">Surpass onboarding</p>
+          <p className="text-[11px] uppercase tracking-wider opacity-80">Surepass onboarding</p>
           <p className="text-sm font-semibold mt-1 truncate">
             {data.legalName || "Awaiting PAN lookup"}
           </p>
