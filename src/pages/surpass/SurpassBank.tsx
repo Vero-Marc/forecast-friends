@@ -38,8 +38,8 @@ export default function SurpassBank() {
     <SectionWrapper
       title="Bank Account"
       description="Add the settlement account and verify it instantly via penny-drop."
-      prev="/onboarding/surpass/documents"
-      next="/onboarding/surpass/integrations"
+      prev="/onboarding/surepass/documents"
+      next="/onboarding/surepass/integrations"
     >
       <Card className="p-6 surface-card">
         <div className="grid md:grid-cols-2 gap-4">

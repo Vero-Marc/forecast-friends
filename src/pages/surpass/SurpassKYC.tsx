@@ -45,8 +45,8 @@ export default function SurpassKYC() {
     <SectionWrapper
       title="Know Your Customer"
       description="Verify directors and beneficial owners via Aadhaar eKYC and CKYC."
-      prev="/onboarding/surpass/kyb"
-      next="/onboarding/surpass/documents"
+      prev="/onboarding/surepass/kyb"
+      next="/onboarding/surepass/documents"
     >
       <Card className="p-5 surface-card">
         <div className="flex items-center justify-between mb-4">

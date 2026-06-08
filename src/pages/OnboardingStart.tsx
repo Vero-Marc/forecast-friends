@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Mode = "manual" | "surpass";
+type Mode = "manual" | "surepass";
 
 export default function OnboardingStart() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export default function OnboardingStart() {
 
   const proceed = () => {
     if (!selected) return;
-    navigate(selected === "manual" ? "/onboarding/create" : "/onboarding/surpass");
+    navigate(selected === "manual" ? "/onboarding/create" : "/onboarding/surepass");
   };
 
   return (
@@ -59,12 +59,12 @@ export default function OnboardingStart() {
             ]}
           />
           <ModeCard
-            mode="surpass"
-            active={selected === "surpass"}
-            onSelect={() => setSelected("surpass")}
+            mode="surepass"
+            active={selected === "surepass"}
+            onSelect={() => setSelected("surepass")}
             icon={Zap}
             tone="primary"
-            title="Surpass Onboarding"
+            title="Surepass Onboarding"
             subtitle="Automated via PAN"
             description="Enter Business PAN to instantly auto-fetch and verify organization data via third-party APIs. Faster, automated, compliance-ready."
             chips={[
@@ -79,7 +79,7 @@ export default function OnboardingStart() {
         <div className="flex items-center justify-between rounded-xl border bg-card/70 backdrop-blur-sm p-4">
           <p className="text-sm text-muted-foreground">
             {selected
-              ? `You selected ${selected === "manual" ? "Manual" : "Surpass"} onboarding. You can switch any time before submission.`
+              ? `You selected ${selected === "manual" ? "Manual" : "Surepass"} onboarding. You can switch any time before submission.`
               : "Pick a flow to continue. Both flows produce the same compliance-ready record."}
           </p>
           <Button

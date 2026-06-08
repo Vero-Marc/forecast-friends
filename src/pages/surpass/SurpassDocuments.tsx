@@ -26,8 +26,8 @@ export default function SurpassDocuments() {
     <SectionWrapper
       title="Smart document upload"
       description="We've matched documents to verification records. Upload only what's missing — fields are pre-filled."
-      prev="/onboarding/surpass/kyc"
-      next="/onboarding/surpass/bank-accounts"
+      prev="/onboarding/surepass/kyc"
+      next="/onboarding/surepass/bank-accounts"
     >
       <div className="grid md:grid-cols-2 gap-3">
         {docs.map((d) => {

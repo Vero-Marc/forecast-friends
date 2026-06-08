@@ -19,8 +19,8 @@ export default function SurpassIntegrations() {
     <SectionWrapper
       title="Integration"
       description="Configure API access, webhook delivery, and settlement preferences."
-      prev="/onboarding/surpass/bank-accounts"
-      next="/onboarding/surpass/review"
+      prev="/onboarding/surepass/bank-accounts"
+      next="/onboarding/surepass/review"
     >
       <Card className="p-6 surface-card space-y-2">
         <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
