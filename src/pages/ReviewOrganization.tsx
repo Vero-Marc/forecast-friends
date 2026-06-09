@@ -86,6 +86,18 @@ export default function ReviewOrganization() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [decisionNote, setDecisionNote] = useState("");
   const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
+  const [fieldNotes, setFieldNotes] = useState<Record<string, string>>({});
+  const [sectionDecisions, setSectionDecisions] = useState<Record<SectionKey, "approved" | "rejected" | null>>({
+    overview: null, kyb: null, bank: null, documents: null, integration: null, comments: null,
+  });
+
+  const setFieldNote = (key: string, value: string) =>
+    setFieldNotes((p) => ({ ...p, [key]: value }));
+
+  const decideSection = (s: SectionKey, d: "approved" | "rejected") => {
+    setSectionDecisions((p) => ({ ...p, [s]: d }));
+    toast.success(`${sections.find(x => x.key === s)?.title} ${d}`);
+  };
 
   const addComment = (section: SectionKey) => {
     if (!newComment.trim()) return;
