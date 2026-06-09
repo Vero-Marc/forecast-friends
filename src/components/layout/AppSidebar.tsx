@@ -41,7 +41,6 @@ import { cn } from "@/lib/utils";
 const primary = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Onboarding", url: "/onboarding", icon: ClipboardList },
-  { title: "In Review", url: "/onboarding/in-review", icon: SearchCheck },
   { title: "Organizations", url: "/organizations", icon: Building2 },
   { title: "Recent Reports", url: "/reports", icon: FileBarChart2 },
 ];
@@ -87,7 +86,7 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const isActive = (url: string) =>
     url === "/" ? pathname === "/" :
-    url === "/onboarding" ? pathname === "/onboarding" || pathname.startsWith("/onboarding/") && !pathname.startsWith("/onboarding/in-review") :
+    url === "/onboarding" ? pathname === "/onboarding" || pathname.startsWith("/onboarding/") :
     pathname.startsWith(url);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({

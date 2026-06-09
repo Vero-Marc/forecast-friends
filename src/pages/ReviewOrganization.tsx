@@ -9,13 +9,15 @@ import { Separator } from "@/components/ui/separator";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { organizations } from "@/data/mockData";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Building2, Banknote, FileText, Plug, MessageSquare, Shield,
   CheckCircle2, XCircle, Download, Eye, Send, AlertCircle, ClipboardList,
-  Clock, User, ChevronRight,
+  Clock, User, ChevronRight, MessageSquarePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -84,6 +86,18 @@ export default function ReviewOrganization() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [decisionNote, setDecisionNote] = useState("");
   const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
+  const [fieldNotes, setFieldNotes] = useState<Record<string, string>>({});
+  const [sectionDecisions, setSectionDecisions] = useState<Record<SectionKey, "approved" | "rejected" | null>>({
+    overview: null, kyb: null, bank: null, documents: null, integration: null, comments: null,
+  });
+
+  const setFieldNote = (key: string, value: string) =>
+    setFieldNotes((p) => ({ ...p, [key]: value }));
+
+  const decideSection = (s: SectionKey, d: "approved" | "rejected") => {
+    setSectionDecisions((p) => ({ ...p, [s]: d }));
+    toast.success(`${sections.find(x => x.key === s)?.title} ${d}`);
+  };
 
   const addComment = (section: SectionKey) => {
     if (!newComment.trim()) return;
@@ -217,7 +231,7 @@ export default function ReviewOrganization() {
                   <ClipboardList className="h-4 w-4 text-primary" /> Overview
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { label: "Legal name", value: org.name },
                   { label: "Category", value: org.category },
@@ -228,12 +242,17 @@ export default function ReviewOrganization() {
                   { label: "Submitted on", value: org.createdOn },
                   { label: "Assigned reviewer", value: org.assignedAdmin },
                 ].map((r) => (
-                  <div key={r.label}>
-                    <p className="text-xs text-muted-foreground">{r.label}</p>
-                    <p className="text-sm font-medium mt-0.5">{r.value}</p>
-                  </div>
+                  <ReviewableField
+                    key={r.label}
+                    fieldKey={`overview:${r.label}`}
+                    label={r.label}
+                    value={r.value}
+                    note={fieldNotes[`overview:${r.label}`]}
+                    onSaveNote={(v) => setFieldNote(`overview:${r.label}`, v)}
+                  />
                 ))}
               </CardContent>
+              <SectionActions decision={sectionDecisions.overview} onDecide={(d) => decideSection("overview", d)} />
             </Card>
           )}
 
@@ -245,16 +264,27 @@ export default function ReviewOrganization() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Business legal name" value={org.name} />
-                <Field label="Registration number" value="REG-009211" />
-                <Field label="GST / Tax ID" value="GST-22AAAAA0000A1Z5" />
-                <Field label="Date of incorporation" value="12 Mar 2019" />
-                <Field label="Country" value={org.country} />
-                <Field label="Website" value={`https://${org.name.toLowerCase().replace(/\s+/g, "")}.com`} />
-                <div className="sm:col-span-2">
-                  <Field label="Registered address" value="221B Market Street, Suite 400, San Francisco, CA 94107" />
-                </div>
+                {[
+                  { label: "Business legal name", value: org.name },
+                  { label: "Registration number", value: "REG-009211" },
+                  { label: "GST / Tax ID", value: "GST-22AAAAA0000A1Z5" },
+                  { label: "Date of incorporation", value: "12 Mar 2019" },
+                  { label: "Country", value: org.country },
+                  { label: "Website", value: `https://${org.name.toLowerCase().replace(/\s+/g, "")}.com` },
+                  { label: "Registered address", value: "221B Market Street, Suite 400, San Francisco, CA 94107", wide: true },
+                ].map((r) => (
+                  <div key={r.label} className={r.wide ? "sm:col-span-2" : ""}>
+                    <ReviewableField
+                      fieldKey={`kyb:${r.label}`}
+                      label={r.label}
+                      value={r.value}
+                      note={fieldNotes[`kyb:${r.label}`]}
+                      onSaveNote={(v) => setFieldNote(`kyb:${r.label}`, v)}
+                    />
+                  </div>
+                ))}
               </CardContent>
+              <SectionActions decision={sectionDecisions.kyb} onDecide={(d) => decideSection("kyb", d)} />
             </Card>
           )}
 
@@ -266,13 +296,25 @@ export default function ReviewOrganization() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Account holder" value={org.name} />
-                <Field label="Account number" value="•••• •••• 1234" />
-                <Field label="Bank" value="Pinnacle Trust" />
-                <Field label="Branch" value="SF Downtown" />
-                <Field label="IFSC / Routing" value="PINTUS33" />
-                <Field label="Account type" value="Current" />
+                {[
+                  { label: "Account holder", value: org.name },
+                  { label: "Account number", value: "•••• •••• 1234" },
+                  { label: "Bank", value: "Pinnacle Trust" },
+                  { label: "Branch", value: "SF Downtown" },
+                  { label: "IFSC / Routing", value: "PINTUS33" },
+                  { label: "Account type", value: "Current" },
+                ].map((r) => (
+                  <ReviewableField
+                    key={r.label}
+                    fieldKey={`bank:${r.label}`}
+                    label={r.label}
+                    value={r.value}
+                    note={fieldNotes[`bank:${r.label}`]}
+                    onSaveNote={(v) => setFieldNote(`bank:${r.label}`, v)}
+                  />
+                ))}
               </CardContent>
+              <SectionActions decision={sectionDecisions.bank} onDecide={(d) => decideSection("bank", d)} />
             </Card>
           )}
 
@@ -284,24 +326,36 @@ export default function ReviewOrganization() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {docs.map((f) => (
-                  <div
-                    key={f.name}
-                    className="flex items-center gap-3 rounded-lg border p-3 bg-card hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                      <FileText className="h-4 w-4" />
+                {docs.map((f) => {
+                  const k = `documents:${f.name}`;
+                  return (
+                    <div
+                      key={f.name}
+                      className="flex items-center gap-3 rounded-lg border p-3 bg-card hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{f.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Uploaded {f.date}
+                          {fieldNotes[k] && <span className="ml-2 text-primary">· Review note added</span>}
+                        </p>
+                      </div>
+                      <StatusBadge status={f.status as any} />
+                      <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
+                      <FieldNotePopover
+                        label={f.name}
+                        note={fieldNotes[k]}
+                        onSave={(v) => setFieldNote(k, v)}
+                      />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{f.name}</p>
-                      <p className="text-xs text-muted-foreground">Uploaded {f.date}</p>
-                    </div>
-                    <StatusBadge status={f.status as any} />
-                    <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
+              <SectionActions decision={sectionDecisions.documents} onDecide={(d) => decideSection("documents", d)} />
             </Card>
           )}
 
@@ -312,7 +366,7 @@ export default function ReviewOrganization() {
                   <Plug className="h-4 w-4 text-primary" /> Integration
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 <div className="rounded-lg border bg-muted/30 p-4">
                   <p className="text-xs text-muted-foreground">Live API key</p>
                   <div className="flex items-center gap-2 mt-1.5">
@@ -322,9 +376,21 @@ export default function ReviewOrganization() {
                     <Button variant="outline" size="sm">Copy</Button>
                   </div>
                 </div>
-                <Field label="Webhook URL" value="https://api.acme.com/webhooks/fynnix" />
-                <Field label="Last delivery" value="200 OK · 2h ago" />
+                {[
+                  { label: "Webhook URL", value: "https://api.acme.com/webhooks/fynnix" },
+                  { label: "Last delivery", value: "200 OK · 2h ago" },
+                ].map((r) => (
+                  <ReviewableField
+                    key={r.label}
+                    fieldKey={`integration:${r.label}`}
+                    label={r.label}
+                    value={r.value}
+                    note={fieldNotes[`integration:${r.label}`]}
+                    onSaveNote={(v) => setFieldNote(`integration:${r.label}`, v)}
+                  />
+                ))}
               </CardContent>
+              <SectionActions decision={sectionDecisions.integration} onDecide={(d) => decideSection("integration", d)} />
             </Card>
           )}
 
@@ -544,3 +610,119 @@ function CommentRow({ c, compact }: { c: Comment; compact?: boolean }) {
     </div>
   );
 }
+
+function FieldNotePopover({
+  label, note, onSave,
+}: { label: string; note?: string; onSave: (v: string) => void }) {
+  const [draft, setDraft] = useState(note ?? "");
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (v) setDraft(note ?? ""); }}>
+      <PopoverTrigger asChild>
+        <Button
+          variant={note ? "secondary" : "ghost"}
+          size="sm"
+          className={cn("h-7 gap-1", note && "text-primary")}
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" />
+          {note ? "Review" : "Add review"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
+          <Textarea
+            rows={3}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Write a review note for this field…"
+          />
+          <div className="flex justify-end gap-1.5">
+            {note && (
+              <Button variant="ghost" size="sm" onClick={() => { onSave(""); setOpen(false); }}>
+                Clear
+              </Button>
+            )}
+            <Button
+              size="sm"
+              className="gradient-primary text-primary-foreground"
+              onClick={() => { onSave(draft.trim()); setOpen(false); toast.success("Review note saved"); }}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ReviewableField({
+  fieldKey, label, value, note, onSaveNote,
+}: { fieldKey: string; label: string; value: string; note?: string; onSaveNote: (v: string) => void }) {
+  return (
+    <div className={cn(
+      "rounded-md border bg-card/50 p-3 transition-colors",
+      note && "border-primary/40 bg-primary/5"
+    )}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-sm font-medium mt-1 break-words">{value}</p>
+        </div>
+        <FieldNotePopover label={label} note={note} onSave={onSaveNote} />
+      </div>
+      {note && (
+        <div className="mt-2 rounded-md bg-background/60 border border-dashed border-primary/30 p-2">
+          <p className="text-[11px] text-primary font-medium flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" /> Reviewer note
+          </p>
+          <p className="text-xs text-foreground mt-0.5 break-words">{note}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionActions({
+  decision, onDecide,
+}: { decision: "approved" | "rejected" | null; onDecide: (d: "approved" | "rejected") => void }) {
+  return (
+    <div className="border-t px-6 py-3 flex items-center justify-between gap-3 bg-muted/20">
+      <div className="text-xs text-muted-foreground">
+        {decision === "approved" && (
+          <Badge variant="outline" className="border-success/40 text-success bg-success/10">
+            <CheckCircle2 className="mr-1 h-3 w-3" /> Section approved
+          </Badge>
+        )}
+        {decision === "rejected" && (
+          <Badge variant="outline" className="border-destructive/40 text-destructive bg-destructive/10">
+            <XCircle className="mr-1 h-3 w-3" /> Section rejected
+          </Badge>
+        )}
+        {!decision && <span>Decide on this section once you've added any review notes.</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onDecide("rejected")}
+          className={cn(decision === "rejected" && "border-destructive text-destructive")}
+        >
+          <XCircle className="mr-1.5 h-3.5 w-3.5" /> Reject section
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => onDecide("approved")}
+          className={cn(
+            "gradient-primary text-primary-foreground",
+            decision === "approved" && "ring-2 ring-success/40"
+          )}
+        >
+          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Approve section
+        </Button>
+      </div>
+    </div>
+  );
+}
+
