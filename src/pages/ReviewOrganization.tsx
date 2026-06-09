@@ -9,13 +9,15 @@ import { Separator } from "@/components/ui/separator";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { organizations } from "@/data/mockData";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Building2, Banknote, FileText, Plug, MessageSquare, Shield,
   CheckCircle2, XCircle, Download, Eye, Send, AlertCircle, ClipboardList,
-  Clock, User, ChevronRight,
+  Clock, User, ChevronRight, MessageSquarePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
