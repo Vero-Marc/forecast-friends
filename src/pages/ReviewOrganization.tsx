@@ -610,3 +610,119 @@ function CommentRow({ c, compact }: { c: Comment; compact?: boolean }) {
     </div>
   );
 }
+
+function FieldNotePopover({
+  label, note, onSave,
+}: { label: string; note?: string; onSave: (v: string) => void }) {
+  const [draft, setDraft] = useState(note ?? "");
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (v) setDraft(note ?? ""); }}>
+      <PopoverTrigger asChild>
+        <Button
+          variant={note ? "secondary" : "ghost"}
+          size="sm"
+          className={cn("h-7 gap-1", note && "text-primary")}
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" />
+          {note ? "Review" : "Add review"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
+          <Textarea
+            rows={3}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Write a review note for this field…"
+          />
+          <div className="flex justify-end gap-1.5">
+            {note && (
+              <Button variant="ghost" size="sm" onClick={() => { onSave(""); setOpen(false); }}>
+                Clear
+              </Button>
+            )}
+            <Button
+              size="sm"
+              className="gradient-primary text-primary-foreground"
+              onClick={() => { onSave(draft.trim()); setOpen(false); toast.success("Review note saved"); }}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ReviewableField({
+  fieldKey, label, value, note, onSaveNote,
+}: { fieldKey: string; label: string; value: string; note?: string; onSaveNote: (v: string) => void }) {
+  return (
+    <div className={cn(
+      "rounded-md border bg-card/50 p-3 transition-colors",
+      note && "border-primary/40 bg-primary/5"
+    )}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-sm font-medium mt-1 break-words">{value}</p>
+        </div>
+        <FieldNotePopover label={label} note={note} onSave={onSaveNote} />
+      </div>
+      {note && (
+        <div className="mt-2 rounded-md bg-background/60 border border-dashed border-primary/30 p-2">
+          <p className="text-[11px] text-primary font-medium flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" /> Reviewer note
+          </p>
+          <p className="text-xs text-foreground mt-0.5 break-words">{note}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionActions({
+  decision, onDecide,
+}: { decision: "approved" | "rejected" | null; onDecide: (d: "approved" | "rejected") => void }) {
+  return (
+    <div className="border-t px-6 py-3 flex items-center justify-between gap-3 bg-muted/20">
+      <div className="text-xs text-muted-foreground">
+        {decision === "approved" && (
+          <Badge variant="outline" className="border-success/40 text-success bg-success/10">
+            <CheckCircle2 className="mr-1 h-3 w-3" /> Section approved
+          </Badge>
+        )}
+        {decision === "rejected" && (
+          <Badge variant="outline" className="border-destructive/40 text-destructive bg-destructive/10">
+            <XCircle className="mr-1 h-3 w-3" /> Section rejected
+          </Badge>
+        )}
+        {!decision && <span>Decide on this section once you've added any review notes.</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onDecide("rejected")}
+          className={cn(decision === "rejected" && "border-destructive text-destructive")}
+        >
+          <XCircle className="mr-1.5 h-3.5 w-3.5" /> Reject section
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => onDecide("approved")}
+          className={cn(
+            "gradient-primary text-primary-foreground",
+            decision === "approved" && "ring-2 ring-success/40"
+          )}
+        >
+          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Approve section
+        </Button>
+      </div>
+    </div>
+  );
+}
+
