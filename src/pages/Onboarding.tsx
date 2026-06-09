@@ -106,7 +106,11 @@ export default function Onboarding() {
                     <TableCell className="text-sm text-muted-foreground">{o.lastUpdated}</TableCell>
                     <TableCell className="text-sm">{o.assignedAdmin}</TableCell>
                     <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="sm"><Link to={`/onboarding/${o.id}`}>Open</Link></Button>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={o.status === "In Review" ? `/onboarding/review/${o.id}` : `/onboarding/${o.id}`}>
+                          {o.status === "In Review" ? "Review" : "Open"}
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
