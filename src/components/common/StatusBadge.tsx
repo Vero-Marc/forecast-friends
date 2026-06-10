@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { OrgStatus } from "@/data/mockData";
 
-const map: Record<OrgStatus, string> = {
+const map: Record<string, string> = {
   Approved: "bg-success/10 text-success border-success/20",
   Active: "bg-success/10 text-success border-success/20",
   Inactive: "bg-muted text-muted-foreground border-border",
@@ -9,6 +9,8 @@ const map: Record<OrgStatus, string> = {
   Rejected: "bg-destructive/10 text-destructive border-destructive/20",
   Pending: "bg-muted text-muted-foreground border-border",
   "In Review": "bg-info/10 text-info border-info/20",
+  "Under Review": "bg-info/10 text-info border-info/20",
+  "Changes Requested": "bg-warning/10 text-warning border-warning/20",
   "In Progress": "bg-primary/10 text-primary border-primary/20",
 };
 
