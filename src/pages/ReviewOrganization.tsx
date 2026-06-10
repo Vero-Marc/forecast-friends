@@ -52,6 +52,72 @@ const docs = [
   { name: "Bank Proof.jpg", date: "May 16, 2026", status: "Pending" },
 ];
 
+// Mock backend validation errors keyed by `${section}:${label}`
+// In production these would come from the verification API response.
+export interface BackendError {
+  code: string;
+  message: string;
+  severity: "error" | "warning";
+  source?: string;
+}
+
+const backendErrors: Record<string, BackendError> = {
+  "kyb:GST / Tax ID": {
+    code: "GSTN_MISMATCH",
+    message: "Legal name on GSTN registry does not match submitted legal name.",
+    severity: "error",
+    source: "GSTN Registry",
+  },
+  "kyb:Registration number": {
+    code: "MCA_NOT_FOUND",
+    message: "No active record found for this CIN in MCA database.",
+    severity: "error",
+    source: "MCA",
+  },
+  "kyb:Date of incorporation": {
+    code: "DATE_FORMAT",
+    message: "Date format differs from registry (registry: 03/12/2019).",
+    severity: "warning",
+    source: "MCA",
+  },
+  "bank:Account number": {
+    code: "PENNY_DROP_FAILED",
+    message: "Penny drop returned beneficiary name 'NORTHWND CAP LTD' — partial match (87%).",
+    severity: "warning",
+    source: "Penny Drop",
+  },
+  "bank:IFSC / Routing": {
+    code: "IFSC_INVALID",
+    message: "IFSC code not recognised by RBI directory.",
+    severity: "error",
+    source: "RBI",
+  },
+  "documents:Director ID.png": {
+    code: "OCR_LOW_CONFIDENCE",
+    message: "OCR confidence 62% — document may be blurred or cropped.",
+    severity: "warning",
+    source: "OCR Engine",
+  },
+  "documents:Bank Proof.jpg": {
+    code: "FORMAT_REJECTED",
+    message: "JPG not accepted for bank proof. Upload a signed PDF.",
+    severity: "error",
+    source: "Doc Validator",
+  },
+  "integration:Webhook URL": {
+    code: "WEBHOOK_UNREACHABLE",
+    message: "Last ping returned 503 Service Unavailable.",
+    severity: "error",
+    source: "Webhook Probe",
+  },
+  "overview:Email": {
+    code: "EMAIL_UNVERIFIED",
+    message: "Email domain not verified via DNS TXT record.",
+    severity: "warning",
+    source: "DNS",
+  },
+};
+
 const reviewChecks: Record<SectionKey, { label: string; done: boolean }[]> = {
   overview: [],
   kyb: [
@@ -224,6 +290,7 @@ export default function ReviewOrganization() {
 
         {/* Content */}
         <div className="space-y-4 min-w-0">
+          <SectionErrorSummary section={active} />
           {active === "overview" && (
             <Card className="surface-card">
               <CardHeader className="pb-2">
@@ -249,6 +316,7 @@ export default function ReviewOrganization() {
                     value={r.value}
                     note={fieldNotes[`overview:${r.label}`]}
                     onSaveNote={(v) => setFieldNote(`overview:${r.label}`, v)}
+                    error={backendErrors[`overview:${r.label}`]}
                   />
                 ))}
               </CardContent>
@@ -280,6 +348,7 @@ export default function ReviewOrganization() {
                       value={r.value}
                       note={fieldNotes[`kyb:${r.label}`]}
                       onSaveNote={(v) => setFieldNote(`kyb:${r.label}`, v)}
+                      error={backendErrors[`kyb:${r.label}`]}
                     />
                   </div>
                 ))}
@@ -311,6 +380,7 @@ export default function ReviewOrganization() {
                     value={r.value}
                     note={fieldNotes[`bank:${r.label}`]}
                     onSaveNote={(v) => setFieldNote(`bank:${r.label}`, v)}
+                    error={backendErrors[`bank:${r.label}`]}
                   />
                 ))}
               </CardContent>
@@ -328,29 +398,61 @@ export default function ReviewOrganization() {
               <CardContent className="space-y-2">
                 {docs.map((f) => {
                   const k = `documents:${f.name}`;
+                  const err = backendErrors[k];
+                  const isError = err?.severity === "error";
+                  const isWarn = err?.severity === "warning";
                   return (
                     <div
                       key={f.name}
-                      className="flex items-center gap-3 rounded-lg border p-3 bg-card hover:bg-muted/30 transition-colors"
+                      className={cn(
+                        "rounded-lg border p-3 bg-card hover:bg-muted/30 transition-colors",
+                        isError && "border-destructive/50 bg-destructive/5",
+                        isWarn && "border-warning/50 bg-warning/5",
+                      )}
                     >
-                      <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                        <FileText className="h-4 w-4" />
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{f.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Uploaded {f.date}
+                            {fieldNotes[k] && <span className="ml-2 text-primary">· Review note added</span>}
+                          </p>
+                        </div>
+                        <StatusBadge status={f.status as any} />
+                        <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
+                        <FieldNotePopover
+                          label={f.name}
+                          note={fieldNotes[k]}
+                          onSave={(v) => setFieldNote(k, v)}
+                        />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{f.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Uploaded {f.date}
-                          {fieldNotes[k] && <span className="ml-2 text-primary">· Review note added</span>}
-                        </p>
-                      </div>
-                      <StatusBadge status={f.status as any} />
-                      <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
-                      <FieldNotePopover
-                        label={f.name}
-                        note={fieldNotes[k]}
-                        onSave={(v) => setFieldNote(k, v)}
-                      />
+                      {err && (
+                        <div className={cn(
+                          "mt-2 ml-12 rounded-md border p-2 flex gap-2",
+                          isError ? "border-destructive/40 bg-destructive/10" : "border-warning/40 bg-warning/10",
+                        )}>
+                          <AlertCircle className={cn(
+                            "h-3.5 w-3.5 mt-0.5 shrink-0",
+                            isError ? "text-destructive" : "text-warning",
+                          )} />
+                          <div className="min-w-0">
+                            <p className={cn(
+                              "text-[11px] font-semibold flex items-center gap-1.5 flex-wrap",
+                              isError ? "text-destructive" : "text-warning",
+                            )}>
+                              {err.code}
+                              {err.source && (
+                                <span className="font-normal text-muted-foreground">· {err.source}</span>
+                              )}
+                            </p>
+                            <p className="text-xs text-foreground mt-0.5 break-words">{err.message}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -387,6 +489,7 @@ export default function ReviewOrganization() {
                     value={r.value}
                     note={fieldNotes[`integration:${r.label}`]}
                     onSaveNote={(v) => setFieldNote(`integration:${r.label}`, v)}
+                    error={backendErrors[`integration:${r.label}`]}
                   />
                 ))}
               </CardContent>
@@ -658,20 +761,50 @@ function FieldNotePopover({
 }
 
 function ReviewableField({
-  fieldKey, label, value, note, onSaveNote,
-}: { fieldKey: string; label: string; value: string; note?: string; onSaveNote: (v: string) => void }) {
+  fieldKey, label, value, note, onSaveNote, error,
+}: { fieldKey: string; label: string; value: string; note?: string; onSaveNote: (v: string) => void; error?: BackendError }) {
+  const isError = error?.severity === "error";
+  const isWarn = error?.severity === "warning";
   return (
     <div className={cn(
       "rounded-md border bg-card/50 p-3 transition-colors",
-      note && "border-primary/40 bg-primary/5"
+      note && "border-primary/40 bg-primary/5",
+      isError && "border-destructive/50 bg-destructive/5",
+      isWarn && "border-warning/50 bg-warning/5",
     )}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className="text-sm font-medium mt-1 break-words">{value}</p>
+          <p className={cn(
+            "text-sm font-medium mt-1 break-words",
+            isError && "text-destructive",
+          )}>{value}</p>
         </div>
         <FieldNotePopover label={label} note={note} onSave={onSaveNote} />
       </div>
+      {error && (
+        <div className={cn(
+          "mt-2 rounded-md border p-2 flex gap-2",
+          isError ? "border-destructive/40 bg-destructive/10" : "border-warning/40 bg-warning/10",
+        )}>
+          <AlertCircle className={cn(
+            "h-3.5 w-3.5 mt-0.5 shrink-0",
+            isError ? "text-destructive" : "text-warning",
+          )} />
+          <div className="min-w-0">
+            <p className={cn(
+              "text-[11px] font-semibold flex items-center gap-1.5 flex-wrap",
+              isError ? "text-destructive" : "text-warning",
+            )}>
+              {error.code}
+              {error.source && (
+                <span className="font-normal text-muted-foreground">· {error.source}</span>
+              )}
+            </p>
+            <p className="text-xs text-foreground mt-0.5 break-words">{error.message}</p>
+          </div>
+        </div>
+      )}
       {note && (
         <div className="mt-2 rounded-md bg-background/60 border border-dashed border-primary/30 p-2">
           <p className="text-[11px] text-primary font-medium flex items-center gap-1">
@@ -725,4 +858,49 @@ function SectionActions({
     </div>
   );
 }
+
+function SectionErrorSummary({ section }: { section: SectionKey }) {
+  const prefix = `${section}:`;
+  const items = Object.entries(backendErrors).filter(([k]) => k.startsWith(prefix));
+  if (!items.length) return null;
+  const errors = items.filter(([, v]) => v.severity === "error").length;
+  const warns = items.filter(([, v]) => v.severity === "warning").length;
+  return (
+    <div className={cn(
+      "rounded-lg border p-3 flex items-start gap-3",
+      errors > 0 ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5",
+    )}>
+      <AlertCircle className={cn(
+        "h-4 w-4 mt-0.5 shrink-0",
+        errors > 0 ? "text-destructive" : "text-warning",
+      )} />
+      <div className="flex-1 min-w-0">
+        <p className={cn(
+          "text-sm font-medium",
+          errors > 0 ? "text-destructive" : "text-warning",
+        )}>
+          {errors > 0 && `${errors} backend error${errors > 1 ? "s" : ""}`}
+          {errors > 0 && warns > 0 && " · "}
+          {warns > 0 && `${warns} warning${warns > 1 ? "s" : ""}`}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Issues returned from verification APIs — see highlighted fields below.
+        </p>
+      </div>
+      <div className="flex gap-1.5">
+        {errors > 0 && (
+          <Badge variant="outline" className="border-destructive/40 text-destructive bg-destructive/10">
+            {errors} error
+          </Badge>
+        )}
+        {warns > 0 && (
+          <Badge variant="outline" className="border-warning/40 text-warning bg-warning/10">
+            {warns} warning
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
