@@ -52,6 +52,72 @@ const docs = [
   { name: "Bank Proof.jpg", date: "May 16, 2026", status: "Pending" },
 ];
 
+// Mock backend validation errors keyed by `${section}:${label}`
+// In production these would come from the verification API response.
+export interface BackendError {
+  code: string;
+  message: string;
+  severity: "error" | "warning";
+  source?: string;
+}
+
+const backendErrors: Record<string, BackendError> = {
+  "kyb:GST / Tax ID": {
+    code: "GSTN_MISMATCH",
+    message: "Legal name on GSTN registry does not match submitted legal name.",
+    severity: "error",
+    source: "GSTN Registry",
+  },
+  "kyb:Registration number": {
+    code: "MCA_NOT_FOUND",
+    message: "No active record found for this CIN in MCA database.",
+    severity: "error",
+    source: "MCA",
+  },
+  "kyb:Date of incorporation": {
+    code: "DATE_FORMAT",
+    message: "Date format differs from registry (registry: 03/12/2019).",
+    severity: "warning",
+    source: "MCA",
+  },
+  "bank:Account number": {
+    code: "PENNY_DROP_FAILED",
+    message: "Penny drop returned beneficiary name 'NORTHWND CAP LTD' — partial match (87%).",
+    severity: "warning",
+    source: "Penny Drop",
+  },
+  "bank:IFSC / Routing": {
+    code: "IFSC_INVALID",
+    message: "IFSC code not recognised by RBI directory.",
+    severity: "error",
+    source: "RBI",
+  },
+  "documents:Director ID.png": {
+    code: "OCR_LOW_CONFIDENCE",
+    message: "OCR confidence 62% — document may be blurred or cropped.",
+    severity: "warning",
+    source: "OCR Engine",
+  },
+  "documents:Bank Proof.jpg": {
+    code: "FORMAT_REJECTED",
+    message: "JPG not accepted for bank proof. Upload a signed PDF.",
+    severity: "error",
+    source: "Doc Validator",
+  },
+  "integration:Webhook URL": {
+    code: "WEBHOOK_UNREACHABLE",
+    message: "Last ping returned 503 Service Unavailable.",
+    severity: "error",
+    source: "Webhook Probe",
+  },
+  "overview:Email": {
+    code: "EMAIL_UNVERIFIED",
+    message: "Email domain not verified via DNS TXT record.",
+    severity: "warning",
+    source: "DNS",
+  },
+};
+
 const reviewChecks: Record<SectionKey, { label: string; done: boolean }[]> = {
   overview: [],
   kyb: [
