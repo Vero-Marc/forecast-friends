@@ -859,3 +859,48 @@ function SectionActions({
   );
 }
 
+function SectionErrorSummary({ section }: { section: SectionKey }) {
+  const prefix = `${section}:`;
+  const items = Object.entries(backendErrors).filter(([k]) => k.startsWith(prefix));
+  if (!items.length) return null;
+  const errors = items.filter(([, v]) => v.severity === "error").length;
+  const warns = items.filter(([, v]) => v.severity === "warning").length;
+  return (
+    <div className={cn(
+      "rounded-lg border p-3 flex items-start gap-3",
+      errors > 0 ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5",
+    )}>
+      <AlertCircle className={cn(
+        "h-4 w-4 mt-0.5 shrink-0",
+        errors > 0 ? "text-destructive" : "text-warning",
+      )} />
+      <div className="flex-1 min-w-0">
+        <p className={cn(
+          "text-sm font-medium",
+          errors > 0 ? "text-destructive" : "text-warning",
+        )}>
+          {errors > 0 && `${errors} backend error${errors > 1 ? "s" : ""}`}
+          {errors > 0 && warns > 0 && " · "}
+          {warns > 0 && `${warns} warning${warns > 1 ? "s" : ""}`}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Issues returned from verification APIs — see highlighted fields below.
+        </p>
+      </div>
+      <div className="flex gap-1.5">
+        {errors > 0 && (
+          <Badge variant="outline" className="border-destructive/40 text-destructive bg-destructive/10">
+            {errors} error
+          </Badge>
+        )}
+        {warns > 0 && (
+          <Badge variant="outline" className="border-warning/40 text-warning bg-warning/10">
+            {warns} warning
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
