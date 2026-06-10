@@ -290,6 +290,7 @@ export default function ReviewOrganization() {
 
         {/* Content */}
         <div className="space-y-4 min-w-0">
+          <SectionErrorSummary section={active} />
           {active === "overview" && (
             <Card className="surface-card">
               <CardHeader className="pb-2">
