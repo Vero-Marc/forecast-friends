@@ -379,6 +379,7 @@ export default function ReviewOrganization() {
                     value={r.value}
                     note={fieldNotes[`bank:${r.label}`]}
                     onSaveNote={(v) => setFieldNote(`bank:${r.label}`, v)}
+                    error={backendErrors[`bank:${r.label}`]}
                   />
                 ))}
               </CardContent>
