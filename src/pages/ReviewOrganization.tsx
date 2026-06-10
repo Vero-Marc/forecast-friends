@@ -456,6 +456,7 @@ export default function ReviewOrganization() {
                     value={r.value}
                     note={fieldNotes[`integration:${r.label}`]}
                     onSaveNote={(v) => setFieldNote(`integration:${r.label}`, v)}
+                    error={backendErrors[`integration:${r.label}`]}
                   />
                 ))}
               </CardContent>
