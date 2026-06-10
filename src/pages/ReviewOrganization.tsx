@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -17,11 +16,12 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Building2, Banknote, FileText, Plug, MessageSquare, Shield,
   CheckCircle2, XCircle, Download, Eye, Send, AlertCircle, ClipboardList,
-  Clock, User, ChevronRight, MessageSquarePlus,
+  Clock, User, ChevronRight, MessageSquarePlus, RefreshCw, Sparkles, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
-type SectionKey = "overview" | "kyb" | "bank" | "documents" | "integration" | "comments";
+type SectionKey = "overview" | "kyb" | "bank" | "documents" | "integration";
+type ReviewStatus = "under_review" | "changes_requested" | "approved";
 
 const sections: { key: SectionKey; title: string; description: string; icon: any }[] = [
   { key: "overview", title: "Overview", description: "Snapshot", icon: ClipboardList },
@@ -29,31 +29,8 @@ const sections: { key: SectionKey; title: string; description: string; icon: any
   { key: "bank", title: "Bank Account", description: "Banking details", icon: Banknote },
   { key: "documents", title: "Documents", description: "Uploaded files", icon: FileText },
   { key: "integration", title: "Integration", description: "API & webhooks", icon: Plug },
-  { key: "comments", title: "Comments", description: "Reviewer notes", icon: MessageSquare },
 ];
 
-interface Comment {
-  id: string;
-  author: string;
-  section: SectionKey;
-  text: string;
-  ts: string;
-}
-
-const initialComments: Comment[] = [
-  { id: "c1", author: "Sarah Chen", section: "kyb", text: "GST certificate looks valid. Awaiting director ID.", ts: "2h ago" },
-  { id: "c2", author: "Marcus Hill", section: "documents", text: "Please reupload the bank proof in PDF format.", ts: "5h ago" },
-];
-
-const docs = [
-  { name: "Certificate of Incorporation.pdf", date: "May 12, 2026", status: "Approved" },
-  { name: "Tax Registration.pdf", date: "May 14, 2026", status: "In Review" },
-  { name: "Director ID.png", date: "May 15, 2026", status: "Pending" },
-  { name: "Bank Proof.jpg", date: "May 16, 2026", status: "Pending" },
-];
-
-// Mock backend validation errors keyed by `${section}:${label}`
-// In production these would come from the verification API response.
 export interface BackendError {
   code: string;
   message: string;
@@ -62,186 +39,285 @@ export interface BackendError {
 }
 
 const backendErrors: Record<string, BackendError> = {
-  "kyb:GST / Tax ID": {
-    code: "GSTN_MISMATCH",
-    message: "Legal name on GSTN registry does not match submitted legal name.",
-    severity: "error",
-    source: "GSTN Registry",
+  "kyb:GST / Tax ID": { code: "GSTN_MISMATCH", message: "Legal name on GSTN registry does not match submitted legal name.", severity: "error", source: "GSTN Registry" },
+  "kyb:Registration number": { code: "MCA_NOT_FOUND", message: "No active record found for this CIN in MCA database.", severity: "error", source: "MCA" },
+  "kyb:Date of incorporation": { code: "DATE_FORMAT", message: "Date format differs from registry (registry: 03/12/2019).", severity: "warning", source: "MCA" },
+  "bank:Account number": { code: "PENNY_DROP_FAILED", message: "Penny drop returned beneficiary name 'NORTHWND CAP LTD' — partial match (87%).", severity: "warning", source: "Penny Drop" },
+  "bank:IFSC / Routing": { code: "IFSC_INVALID", message: "IFSC code not recognised by RBI directory.", severity: "error", source: "RBI" },
+  "documents:Director ID.png": { code: "OCR_LOW_CONFIDENCE", message: "OCR confidence 62% — document may be blurred or cropped.", severity: "warning", source: "OCR Engine" },
+  "documents:Bank Proof.jpg": { code: "FORMAT_REJECTED", message: "JPG not accepted for bank proof. Upload a signed PDF.", severity: "error", source: "Doc Validator" },
+  "integration:Webhook URL": { code: "WEBHOOK_UNREACHABLE", message: "Last ping returned 503 Service Unavailable.", severity: "error", source: "Webhook Probe" },
+  "overview:Email": { code: "EMAIL_UNVERIFIED", message: "Email domain not verified via DNS TXT record.", severity: "warning", source: "DNS" },
+};
+
+interface ReviewRemark {
+  id: string;
+  author: string;
+  text: string;
+  ts: string;
+  resolved?: boolean;
+}
+
+interface FieldReview {
+  status: ReviewStatus;
+  remarks: ReviewRemark[];
+  submissionRound: number; // increments when merchant resubmits
+}
+
+const docs = [
+  { name: "Certificate of Incorporation.pdf", date: "May 12, 2026" },
+  { name: "Tax Registration.pdf", date: "May 14, 2026" },
+  { name: "Director ID.png", date: "May 15, 2026" },
+  { name: "Bank Proof.jpg", date: "May 16, 2026" },
+];
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+const statusMeta: Record<ReviewStatus, { label: string; tone: string; icon: any; dot: string }> = {
+  under_review: {
+    label: "Under Review",
+    tone: "text-info bg-info/10 border-info/30",
+    dot: "bg-info",
+    icon: Loader2,
   },
-  "kyb:Registration number": {
-    code: "MCA_NOT_FOUND",
-    message: "No active record found for this CIN in MCA database.",
-    severity: "error",
-    source: "MCA",
+  changes_requested: {
+    label: "Changes Requested",
+    tone: "text-warning bg-warning/10 border-warning/30",
+    dot: "bg-warning",
+    icon: RefreshCw,
   },
-  "kyb:Date of incorporation": {
-    code: "DATE_FORMAT",
-    message: "Date format differs from registry (registry: 03/12/2019).",
-    severity: "warning",
-    source: "MCA",
-  },
-  "bank:Account number": {
-    code: "PENNY_DROP_FAILED",
-    message: "Penny drop returned beneficiary name 'NORTHWND CAP LTD' — partial match (87%).",
-    severity: "warning",
-    source: "Penny Drop",
-  },
-  "bank:IFSC / Routing": {
-    code: "IFSC_INVALID",
-    message: "IFSC code not recognised by RBI directory.",
-    severity: "error",
-    source: "RBI",
-  },
-  "documents:Director ID.png": {
-    code: "OCR_LOW_CONFIDENCE",
-    message: "OCR confidence 62% — document may be blurred or cropped.",
-    severity: "warning",
-    source: "OCR Engine",
-  },
-  "documents:Bank Proof.jpg": {
-    code: "FORMAT_REJECTED",
-    message: "JPG not accepted for bank proof. Upload a signed PDF.",
-    severity: "error",
-    source: "Doc Validator",
-  },
-  "integration:Webhook URL": {
-    code: "WEBHOOK_UNREACHABLE",
-    message: "Last ping returned 503 Service Unavailable.",
-    severity: "error",
-    source: "Webhook Probe",
-  },
-  "overview:Email": {
-    code: "EMAIL_UNVERIFIED",
-    message: "Email domain not verified via DNS TXT record.",
-    severity: "warning",
-    source: "DNS",
+  approved: {
+    label: "Approved",
+    tone: "text-success bg-success/10 border-success/30",
+    dot: "bg-success",
+    icon: CheckCircle2,
   },
 };
 
-const reviewChecks: Record<SectionKey, { label: string; done: boolean }[]> = {
-  overview: [],
-  kyb: [
-    { label: "Legal name matches registration", done: true },
-    { label: "Tax ID validated", done: true },
-    { label: "Director KYC verified", done: false },
-  ],
-  bank: [
-    { label: "Account holder name matches", done: true },
-    { label: "Penny drop successful", done: true },
-    { label: "IFSC / routing validated", done: false },
-  ],
-  documents: [
-    { label: "All mandatory documents uploaded", done: false },
-    { label: "Documents readable & unexpired", done: true },
-  ],
-  integration: [
-    { label: "Webhook reachable", done: true },
-    { label: "Test transaction completed", done: false },
-  ],
-  comments: [],
-};
+function ReviewPill({ status, size = "sm" }: { status: ReviewStatus; size?: "xs" | "sm" }) {
+  const m = statusMeta[status];
+  const Icon = m.icon;
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1.5 rounded-full border font-medium",
+      m.tone,
+      size === "xs" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-0.5 text-[11px]",
+    )}>
+      <Icon className={cn("h-3 w-3", status === "under_review" && "animate-spin-slow")} />
+      {m.label}
+    </span>
+  );
+}
+
+// ============================================================================
+// Page
+// ============================================================================
 
 export default function ReviewOrganization() {
   const { id } = useParams();
   const org = useMemo(() => organizations.find((o) => o.id === id) ?? organizations[0], [id]);
 
   const [active, setActive] = useState<SectionKey>("overview");
-  const [comments, setComments] = useState<Comment[]>(initialComments);
-  const [newComment, setNewComment] = useState("");
   const [approveOpen, setApproveOpen] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
   const [decisionNote, setDecisionNote] = useState("");
-  const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
-  const [fieldNotes, setFieldNotes] = useState<Record<string, string>>({});
-  const [sectionDecisions, setSectionDecisions] = useState<Record<SectionKey, "approved" | "rejected" | null>>({
-    overview: null, kyb: null, bank: null, documents: null, integration: null, comments: null,
-  });
+  const [finalDecision, setFinalDecision] = useState<"approved" | null>(null);
 
-  const setFieldNote = (key: string, value: string) =>
-    setFieldNotes((p) => ({ ...p, [key]: value }));
+  // Field-level review state. Default = under_review.
+  const [fieldReviews, setFieldReviews] = useState<Record<string, FieldReview>>({});
 
-  const decideSection = (s: SectionKey, d: "approved" | "rejected") => {
-    setSectionDecisions((p) => ({ ...p, [s]: d }));
-    toast.success(`${sections.find(x => x.key === s)?.title} ${d}`);
+  const getReview = (key: string): FieldReview =>
+    fieldReviews[key] ?? { status: "under_review", remarks: [], submissionRound: 1 };
+
+  const requestChanges = (key: string, text: string) => {
+    if (!text.trim()) return;
+    setFieldReviews((p) => {
+      const cur = p[key] ?? { status: "under_review", remarks: [], submissionRound: 1 };
+      return {
+        ...p,
+        [key]: {
+          ...cur,
+          status: "changes_requested",
+          remarks: [
+            ...cur.remarks,
+            { id: `r${Date.now()}`, author: "You", text: text.trim(), ts: "just now" },
+          ],
+        },
+      };
+    });
+    toast.success("Changes requested — merchant notified");
   };
 
-  const addComment = (section: SectionKey) => {
-    if (!newComment.trim()) return;
-    setComments((prev) => [
-      { id: `c${Date.now()}`, author: "You", section, text: newComment.trim(), ts: "just now" },
-      ...prev,
-    ]);
-    setNewComment("");
-    toast.success("Comment added");
+  const resolveAndApprove = (key: string) => {
+    setFieldReviews((p) => {
+      const cur = p[key] ?? { status: "under_review", remarks: [], submissionRound: 1 };
+      return {
+        ...p,
+        [key]: {
+          ...cur,
+          status: "approved",
+          remarks: cur.remarks.map((r) => ({ ...r, resolved: true })),
+        },
+      };
+    });
+    toast.success("Field approved");
   };
 
-  const sectionComments = (s: SectionKey) => comments.filter((c) => c.section === s);
-  const checks = reviewChecks[active];
-  const completion = (() => {
-    const all = Object.values(reviewChecks).flat();
-    if (!all.length) return 0;
-    return Math.round((all.filter((c) => c.done).length / all.length) * 100);
-  })();
+  // Simulate merchant resubmission cycle for demo
+  const simulateResubmit = (key: string) => {
+    setFieldReviews((p) => {
+      const cur = p[key];
+      if (!cur || cur.status !== "changes_requested") return p;
+      return {
+        ...p,
+        [key]: {
+          ...cur,
+          status: "under_review",
+          submissionRound: cur.submissionRound + 1,
+          remarks: [
+            ...cur.remarks,
+            { id: `r${Date.now()}`, author: "Merchant", text: "Updated and resubmitted for review.", ts: "just now" },
+          ],
+        },
+      };
+    });
+    toast.info("Merchant resubmitted — back to Under Review");
+  };
+
+  // Derive section status from field reviews of that section
+  const sectionStatus = (s: SectionKey, fieldKeys: string[]): ReviewStatus => {
+    const reviews = fieldKeys.map(getReview);
+    if (reviews.some((r) => r.status === "changes_requested")) return "changes_requested";
+    if (reviews.length && reviews.every((r) => r.status === "approved")) return "approved";
+    return "under_review";
+  };
+
+  // ============================================================================
+  // Field config per section
+  // ============================================================================
+
+  const sectionFields: Record<SectionKey, { label: string; value: string; wide?: boolean }[]> = {
+    overview: [
+      { label: "Legal name", value: org.name },
+      { label: "Category", value: org.category },
+      { label: "Business type", value: org.businessType },
+      { label: "Country", value: org.country },
+      { label: "Email", value: org.email },
+      { label: "Phone", value: org.phone },
+      { label: "Submitted on", value: org.createdOn },
+      { label: "Assigned reviewer", value: org.assignedAdmin },
+    ],
+    kyb: [
+      { label: "Business legal name", value: org.name },
+      { label: "Registration number", value: "REG-009211" },
+      { label: "GST / Tax ID", value: "GST-22AAAAA0000A1Z5" },
+      { label: "Date of incorporation", value: "12 Mar 2019" },
+      { label: "Country", value: org.country },
+      { label: "Website", value: `https://${org.name.toLowerCase().replace(/\s+/g, "")}.com` },
+      { label: "Registered address", value: "221B Market Street, Suite 400, San Francisco, CA 94107", wide: true },
+    ],
+    bank: [
+      { label: "Account holder", value: org.name },
+      { label: "Account number", value: "•••• •••• 1234" },
+      { label: "Bank", value: "Pinnacle Trust" },
+      { label: "Branch", value: "SF Downtown" },
+      { label: "IFSC / Routing", value: "PINTUS33" },
+      { label: "Account type", value: "Current" },
+    ],
+    integration: [
+      { label: "Webhook URL", value: "https://api.acme.com/webhooks/fynnix" },
+      { label: "Last delivery", value: "200 OK · 2h ago" },
+    ],
+    documents: [], // handled separately
+  };
+
+  const fieldKeysForSection = (s: SectionKey): string[] => {
+    if (s === "documents") return docs.map((d) => `documents:${d.name}`);
+    return sectionFields[s].map((f) => `${s}:${f.label}`);
+  };
+
+  // Overall progress
+  const allKeys = sections.flatMap((s) => fieldKeysForSection(s.key));
+  const approvedCount = allKeys.filter((k) => getReview(k).status === "approved").length;
+  const changesCount = allKeys.filter((k) => getReview(k).status === "changes_requested").length;
+  const completion = Math.round((approvedCount / Math.max(allKeys.length, 1)) * 100);
+
+  const allApproved = approvedCount === allKeys.length;
+
+  const sendAllChangesToMerchant = () => {
+    if (changesCount === 0) {
+      toast.error("No fields marked as Changes Requested");
+      return;
+    }
+    toast.success(`Sent ${changesCount} change request${changesCount > 1 ? "s" : ""} to merchant`);
+  };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/onboarding/in-review"><ArrowLeft className="h-4 w-4" /></Link>
-          </Button>
-          <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-semibold">
-            {org.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-background via-background to-primary/5 p-5">
+        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" asChild>
+              <Link to="/onboarding"><ArrowLeft className="h-4 w-4" /></Link>
+            </Button>
+            <div className="h-12 w-12 rounded-xl gradient-primary text-primary-foreground flex items-center justify-center font-semibold shadow-glow">
+              {org.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold leading-tight">{org.name}</h1>
+              <p className="text-xs text-muted-foreground">
+                {org.id} · {org.category} · {org.businessType}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold leading-tight">{org.name}</h1>
-            <p className="text-xs text-muted-foreground">
-              {org.id} · {org.category} · {org.businessType}
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={changesCount > 0 ? "Changes Requested" : allApproved ? "Approved" : "Under Review"} />
+            {changesCount > 0 && (
+              <Button variant="outline" onClick={sendAllChangesToMerchant}>
+                <Send className="mr-1.5 h-4 w-4" /> Send {changesCount} to merchant
+              </Button>
+            )}
+            <Button
+              onClick={() => setApproveOpen(true)}
+              disabled={!allApproved || !!finalDecision}
+              className="gradient-primary text-primary-foreground shadow-glow"
+            >
+              <Shield className="mr-1.5 h-4 w-4" />
+              {finalDecision ? "Approved" : "Approve organization"}
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <StatusBadge status={org.kybStatus} />
-          <Button variant="outline" onClick={() => setRejectOpen(true)}>
-            <XCircle className="mr-1.5 h-4 w-4" /> Reject
-          </Button>
-          <Button
-            onClick={() => setApproveOpen(true)}
-            className="gradient-primary text-primary-foreground"
-          >
-            <Shield className="mr-1.5 h-4 w-4" /> Approve
-          </Button>
+
+        {/* Progress meta */}
+        <div className="relative mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <MetaTile label="Overall" value={`${completion}%`} accent="text-primary" />
+          <MetaTile label="Approved" value={`${approvedCount} / ${allKeys.length}`} accent="text-success" />
+          <MetaTile label="Changes requested" value={String(changesCount)} accent="text-warning" />
+          <MetaTile label="Under review" value={String(allKeys.length - approvedCount - changesCount)} accent="text-info" />
         </div>
       </div>
 
-      {decision && (
-        <Card
-          className={cn(
-            "surface-card",
-            decision === "approved" ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"
-          )}
-        >
+      {finalDecision === "approved" && (
+        <Card className="surface-card border-success/30 bg-success/5">
           <CardContent className="p-4 flex items-center gap-3">
-            {decision === "approved" ? (
-              <CheckCircle2 className="h-5 w-5 text-success" />
-            ) : (
-              <XCircle className="h-5 w-5 text-destructive" />
-            )}
+            <Sparkles className="h-5 w-5 text-success" />
             <div className="text-sm">
-              <p className="font-medium">
-                {decision === "approved" ? "Organization approved" : "Organization rejected"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Notification sent to the requester.
-              </p>
+              <p className="font-medium">Organization approved</p>
+              <p className="text-xs text-muted-foreground">Notification sent to the merchant. Account moved to Active.</p>
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Split layout: side nav + content */}
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
         {/* Side nav */}
         <Card className="surface-card h-fit lg:sticky lg:top-4">
           <CardHeader className="pb-2">
@@ -250,25 +326,24 @@ export default function ReviewOrganization() {
               <span className="text-xs text-muted-foreground font-normal">{completion}%</span>
             </CardTitle>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all"
-                style={{ width: `${completion}%` }}
-              />
+              <div className="h-full bg-gradient-to-r from-primary to-primary/60 transition-all" style={{ width: `${completion}%` }} />
             </div>
           </CardHeader>
           <CardContent className="p-2">
             <nav className="space-y-1">
               {sections.map((s) => {
                 const isActive = active === s.key;
-                const count = sectionComments(s.key).length;
+                const keys = fieldKeysForSection(s.key);
+                const st = sectionStatus(s.key, keys);
+                const m = statusMeta[st];
                 return (
                   <button
                     key={s.key}
                     onClick={() => setActive(s.key)}
                     className={cn(
-                      "w-full flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
+                      "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-all",
                       isActive
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary/10 text-primary shadow-sm"
                         : "hover:bg-muted/60 text-foreground"
                     )}
                   >
@@ -277,10 +352,8 @@ export default function ReviewOrganization() {
                       <p className="text-sm font-medium leading-tight">{s.title}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{s.description}</p>
                     </div>
-                    {count > 0 && (
-                      <span className="text-[10px] rounded-full bg-muted px-1.5 py-0.5">{count}</span>
-                    )}
-                    <ChevronRight className={cn("h-3.5 w-3.5 opacity-0", isActive && "opacity-100")} />
+                    <span className={cn("h-2 w-2 rounded-full shrink-0", m.dot)} title={m.label} />
+                    <ChevronRight className={cn("h-3.5 w-3.5 opacity-0 transition-opacity", isActive && "opacity-100")} />
                   </button>
                 );
               })}
@@ -290,328 +363,88 @@ export default function ReviewOrganization() {
 
         {/* Content */}
         <div className="space-y-4 min-w-0">
-          <SectionErrorSummary section={active} />
-          {active === "overview" && (
-            <Card className="surface-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4 text-primary" /> Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { label: "Legal name", value: org.name },
-                  { label: "Category", value: org.category },
-                  { label: "Business type", value: org.businessType },
-                  { label: "Country", value: org.country },
-                  { label: "Email", value: org.email },
-                  { label: "Phone", value: org.phone },
-                  { label: "Submitted on", value: org.createdOn },
-                  { label: "Assigned reviewer", value: org.assignedAdmin },
-                ].map((r) => (
-                  <ReviewableField
-                    key={r.label}
-                    fieldKey={`overview:${r.label}`}
-                    label={r.label}
-                    value={r.value}
-                    note={fieldNotes[`overview:${r.label}`]}
-                    onSaveNote={(v) => setFieldNote(`overview:${r.label}`, v)}
-                    error={backendErrors[`overview:${r.label}`]}
-                  />
-                ))}
-              </CardContent>
-              <SectionActions decision={sectionDecisions.overview} onDecide={(d) => decideSection("overview", d)} />
-            </Card>
-          )}
+          {sections.map((s) => {
+            if (active !== s.key) return null;
+            const keys = fieldKeysForSection(s.key);
+            const st = sectionStatus(s.key, keys);
+            const Icon = s.icon;
 
-          {active === "kyb" && (
-            <Card className="surface-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" /> Know Your Business
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { label: "Business legal name", value: org.name },
-                  { label: "Registration number", value: "REG-009211" },
-                  { label: "GST / Tax ID", value: "GST-22AAAAA0000A1Z5" },
-                  { label: "Date of incorporation", value: "12 Mar 2019" },
-                  { label: "Country", value: org.country },
-                  { label: "Website", value: `https://${org.name.toLowerCase().replace(/\s+/g, "")}.com` },
-                  { label: "Registered address", value: "221B Market Street, Suite 400, San Francisco, CA 94107", wide: true },
-                ].map((r) => (
-                  <div key={r.label} className={r.wide ? "sm:col-span-2" : ""}>
-                    <ReviewableField
-                      fieldKey={`kyb:${r.label}`}
-                      label={r.label}
-                      value={r.value}
-                      note={fieldNotes[`kyb:${r.label}`]}
-                      onSaveNote={(v) => setFieldNote(`kyb:${r.label}`, v)}
-                      error={backendErrors[`kyb:${r.label}`]}
-                    />
+            return (
+              <Card key={s.key} className="surface-card overflow-hidden">
+                <CardHeader className="pb-3 border-b bg-gradient-to-r from-muted/20 to-transparent">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-primary" /> {s.title}
+                    </CardTitle>
+                    <ReviewPill status={st} />
                   </div>
-                ))}
-              </CardContent>
-              <SectionActions decision={sectionDecisions.kyb} onDecide={(d) => decideSection("kyb", d)} />
-            </Card>
-          )}
+                </CardHeader>
 
-          {active === "bank" && (
-            <Card className="surface-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Banknote className="h-4 w-4 text-primary" /> Bank account
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { label: "Account holder", value: org.name },
-                  { label: "Account number", value: "•••• •••• 1234" },
-                  { label: "Bank", value: "Pinnacle Trust" },
-                  { label: "Branch", value: "SF Downtown" },
-                  { label: "IFSC / Routing", value: "PINTUS33" },
-                  { label: "Account type", value: "Current" },
-                ].map((r) => (
-                  <ReviewableField
-                    key={r.label}
-                    fieldKey={`bank:${r.label}`}
-                    label={r.label}
-                    value={r.value}
-                    note={fieldNotes[`bank:${r.label}`]}
-                    onSaveNote={(v) => setFieldNote(`bank:${r.label}`, v)}
-                    error={backendErrors[`bank:${r.label}`]}
-                  />
-                ))}
-              </CardContent>
-              <SectionActions decision={sectionDecisions.bank} onDecide={(d) => decideSection("bank", d)} />
-            </Card>
-          )}
+                <CardContent className="p-5 space-y-4">
+                  <SectionErrorSummary section={s.key} />
 
-          {active === "documents" && (
-            <Card className="surface-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" /> Documents
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {docs.map((f) => {
-                  const k = `documents:${f.name}`;
-                  const err = backendErrors[k];
-                  const isError = err?.severity === "error";
-                  const isWarn = err?.severity === "warning";
-                  return (
-                    <div
-                      key={f.name}
-                      className={cn(
-                        "rounded-lg border p-3 bg-card hover:bg-muted/30 transition-colors",
-                        isError && "border-destructive/50 bg-destructive/5",
-                        isWarn && "border-warning/50 bg-warning/5",
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                          <FileText className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{f.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Uploaded {f.date}
-                            {fieldNotes[k] && <span className="ml-2 text-primary">· Review note added</span>}
-                          </p>
-                        </div>
-                        <StatusBadge status={f.status as any} />
-                        <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
-                        <FieldNotePopover
-                          label={f.name}
-                          note={fieldNotes[k]}
-                          onSave={(v) => setFieldNote(k, v)}
-                        />
-                      </div>
-                      {err && (
-                        <div className={cn(
-                          "mt-2 ml-12 rounded-md border p-2 flex gap-2",
-                          isError ? "border-destructive/40 bg-destructive/10" : "border-warning/40 bg-warning/10",
-                        )}>
-                          <AlertCircle className={cn(
-                            "h-3.5 w-3.5 mt-0.5 shrink-0",
-                            isError ? "text-destructive" : "text-warning",
-                          )} />
-                          <div className="min-w-0">
-                            <p className={cn(
-                              "text-[11px] font-semibold flex items-center gap-1.5 flex-wrap",
-                              isError ? "text-destructive" : "text-warning",
-                            )}>
-                              {err.code}
-                              {err.source && (
-                                <span className="font-normal text-muted-foreground">· {err.source}</span>
-                              )}
-                            </p>
-                            <p className="text-xs text-foreground mt-0.5 break-words">{err.message}</p>
+                  {s.key === "documents" ? (
+                    <div className="space-y-2">
+                      {docs.map((f) => {
+                        const k = `documents:${f.name}`;
+                        return (
+                          <DocumentRow
+                            key={f.name}
+                            name={f.name}
+                            date={f.date}
+                            fieldKey={k}
+                            review={getReview(k)}
+                            error={backendErrors[k]}
+                            onRequestChanges={(t) => requestChanges(k, t)}
+                            onResolve={() => resolveAndApprove(k)}
+                            onResubmit={() => simulateResubmit(k)}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {sectionFields[s.key].map((r) => {
+                        const k = `${s.key}:${r.label}`;
+                        return (
+                          <div key={r.label} className={r.wide ? "md:col-span-2" : ""}>
+                            <ReviewableField
+                              fieldKey={k}
+                              label={r.label}
+                              value={r.value}
+                              review={getReview(k)}
+                              error={backendErrors[k]}
+                              onRequestChanges={(t) => requestChanges(k, t)}
+                              onResolve={() => resolveAndApprove(k)}
+                              onResubmit={() => simulateResubmit(k)}
+                            />
                           </div>
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </CardContent>
-              <SectionActions decision={sectionDecisions.documents} onDecide={(d) => decideSection("documents", d)} />
-            </Card>
-          )}
-
-          {active === "integration" && (
-            <Card className="surface-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Plug className="h-4 w-4 text-primary" /> Integration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-xs text-muted-foreground">Live API key</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <code className="text-sm font-mono px-2 py-1 rounded bg-background border flex-1 truncate">
-                      sk_live_4f9a82••••••••••••3201
-                    </code>
-                    <Button variant="outline" size="sm">Copy</Button>
-                  </div>
-                </div>
-                {[
-                  { label: "Webhook URL", value: "https://api.acme.com/webhooks/fynnix" },
-                  { label: "Last delivery", value: "200 OK · 2h ago" },
-                ].map((r) => (
-                  <ReviewableField
-                    key={r.label}
-                    fieldKey={`integration:${r.label}`}
-                    label={r.label}
-                    value={r.value}
-                    note={fieldNotes[`integration:${r.label}`]}
-                    onSaveNote={(v) => setFieldNote(`integration:${r.label}`, v)}
-                    error={backendErrors[`integration:${r.label}`]}
-                  />
-                ))}
-              </CardContent>
-              <SectionActions decision={sectionDecisions.integration} onDecide={(d) => decideSection("integration", d)} />
-            </Card>
-          )}
-
-          {active === "comments" && (
-            <Card className="surface-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-primary" /> All comments
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {comments.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-6">No comments yet.</p>
-                )}
-                {comments.map((c) => (
-                  <CommentRow key={c.id} c={c} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Review checklist + Comment thread for the active section */}
-          {active !== "comments" && active !== "overview" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="surface-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Review checklist</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {checks.map((c) => (
-                    <div key={c.label} className="flex items-center gap-2.5 text-sm">
-                      <CheckCircle2 className={cn("h-4 w-4", c.done ? "text-success" : "text-muted-foreground/40")} />
-                      <span className={cn(!c.done && "text-muted-foreground")}>{c.label}</span>
-                    </div>
-                  ))}
+                  )}
                 </CardContent>
-              </Card>
 
-              <Card className="surface-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-primary" /> Section comments
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2 max-h-48 overflow-auto pr-1">
-                    {sectionComments(active).length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-2">No comments on this section.</p>
-                    ) : (
-                      sectionComments(active).map((c) => <CommentRow key={c.id} c={c} compact />)
-                    )}
-                  </div>
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label className="text-xs">Add a comment</Label>
-                    <Textarea
-                      rows={2}
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder={`Write a note about ${sections.find((s) => s.key === active)?.title}…`}
-                    />
-                    <div className="flex justify-end">
-                      <Button size="sm" onClick={() => addComment(active)} className="gradient-primary text-primary-foreground">
-                        <Send className="mr-1.5 h-3.5 w-3.5" /> Post
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Comments composer when on comments tab */}
-          {active === "comments" && (
-            <Card className="surface-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Add a general comment</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Textarea
-                  rows={3}
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Share a note with the review team…"
+                <SectionFooter
+                  status={st}
+                  fieldCount={keys.length}
+                  approvedCount={keys.filter((k) => getReview(k).status === "approved").length}
+                  changesCount={keys.filter((k) => getReview(k).status === "changes_requested").length}
+                  onSendChanges={sendAllChangesToMerchant}
                 />
-                <div className="flex justify-end">
-                  <Button onClick={() => addComment("comments")} className="gradient-primary text-primary-foreground">
-                    <Send className="mr-1.5 h-3.5 w-3.5" /> Post comment
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {active === "overview" && (
-            <Card className="surface-card border-warning/30 bg-warning/5">
-              <CardContent className="p-4 flex gap-3">
-                <AlertCircle className="h-5 w-5 text-warning shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium">Items needing attention</p>
-                  <p className="text-muted-foreground text-xs mt-0.5">
-                    Director KYC pending · Test transaction not completed.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              </Card>
+            );
+          })}
         </div>
       </div>
 
-      {/* Approve dialog */}
+      {/* Approve organization dialog */}
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Approve {org.name}?</DialogTitle>
             <DialogDescription>
-              This marks the organization as approved and notifies the requester. The
-              organization will move to Active.
+              All sections are approved. This marks the organization as live and notifies the merchant.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
@@ -627,7 +460,7 @@ export default function ReviewOrganization() {
             <Button
               className="gradient-primary text-primary-foreground"
               onClick={() => {
-                setDecision("approved");
+                setFinalDecision("approved");
                 setApproveOpen(false);
                 setDecisionNote("");
                 toast.success("Organization approved");
@@ -638,120 +471,210 @@ export default function ReviewOrganization() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
 
-      {/* Reject dialog */}
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject {org.name}?</DialogTitle>
-            <DialogDescription>
-              Provide a reason so the requester knows what to fix. The organization will
-              move back to the merchant for action.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-1.5">
-            <Label>Reason for rejection</Label>
-            <Textarea
-              value={decisionNote}
-              onChange={(e) => setDecisionNote(e.target.value)}
-              placeholder="e.g. Director ID is unreadable, please resubmit."
-            />
+// ============================================================================
+// Field components
+// ============================================================================
+
+function MetaTile({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="rounded-lg border bg-card/60 backdrop-blur px-3 py-2.5">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={cn("text-lg font-semibold mt-0.5", accent)}>{value}</p>
+    </div>
+  );
+}
+
+function ReviewableField({
+  fieldKey, label, value, review, error,
+  onRequestChanges, onResolve, onResubmit,
+}: {
+  fieldKey: string;
+  label: string;
+  value: string;
+  review: FieldReview;
+  error?: BackendError;
+  onRequestChanges: (text: string) => void;
+  onResolve: () => void;
+  onResubmit: () => void;
+}) {
+  const isError = error?.severity === "error";
+  const isWarn = error?.severity === "warning";
+  const st = review.status;
+
+  return (
+    <div className={cn(
+      "rounded-xl border bg-card/50 p-3.5 transition-all",
+      st === "changes_requested" && "border-warning/40 bg-warning/5",
+      st === "approved" && "border-success/40 bg-success/5",
+      isError && st === "under_review" && "border-destructive/40 bg-destructive/5",
+      isWarn && st === "under_review" && "border-warning/40 bg-warning/5",
+    )}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+            {review.submissionRound > 1 && (
+              <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-info/40 text-info">
+                v{review.submissionRound}
+              </Badge>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setRejectOpen(false)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (!decisionNote.trim()) {
-                  toast.error("Please add a reason");
-                  return;
-                }
-                setDecision("rejected");
-                setRejectOpen(false);
-                setDecisionNote("");
-                toast.success("Organization rejected");
-              }}
-            >
-              <XCircle className="mr-1.5 h-4 w-4" /> Confirm rejection
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border bg-card/50 p-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium mt-1 break-words">{value}</p>
-    </div>
-  );
-}
-
-function CommentRow({ c, compact }: { c: Comment; compact?: boolean }) {
-  return (
-    <div className="flex gap-3 rounded-lg border bg-card/50 p-3">
-      <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <User className="h-4 w-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{c.author}</span>
-          <span>·</span>
-          <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {c.ts}</span>
-          {!compact && (
-            <>
-              <span>·</span>
-              <span className="capitalize">{c.section}</span>
-            </>
-          )}
+          <p className={cn(
+            "text-sm font-medium mt-1 break-words",
+            isError && st !== "approved" && "text-destructive",
+          )}>{value || "—"}</p>
         </div>
-        <p className="text-sm mt-1 break-words">{c.text}</p>
+        <ReviewPill status={st} size="xs" />
       </div>
+
+      {error && st !== "approved" && (
+        <div className={cn(
+          "mt-2.5 rounded-lg border p-2 flex gap-2",
+          isError ? "border-destructive/40 bg-destructive/10" : "border-warning/40 bg-warning/10",
+        )}>
+          <AlertCircle className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", isError ? "text-destructive" : "text-warning")} />
+          <div className="min-w-0">
+            <p className={cn("text-[11px] font-semibold flex items-center gap-1.5 flex-wrap", isError ? "text-destructive" : "text-warning")}>
+              {error.code}
+              {error.source && <span className="font-normal text-muted-foreground">· {error.source}</span>}
+            </p>
+            <p className="text-xs text-foreground mt-0.5 break-words">{error.message}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Remarks thread */}
+      {review.remarks.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {review.remarks.map((r) => (
+            <div key={r.id} className={cn(
+              "rounded-lg border p-2 text-xs",
+              r.resolved
+                ? "border-success/30 bg-success/5 opacity-70"
+                : r.author === "Merchant"
+                  ? "border-info/30 bg-info/5"
+                  : "border-warning/30 bg-warning/5"
+            )}>
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <User className="h-3 w-3" />
+                <span className="font-medium text-foreground">{r.author}</span>
+                <span>·</span>
+                <Clock className="h-3 w-3" /> {r.ts}
+                {r.resolved && (
+                  <Badge variant="outline" className="ml-auto h-4 px-1.5 text-[9px] border-success/40 text-success">
+                    Resolved
+                  </Badge>
+                )}
+              </div>
+              <p className="text-foreground mt-1 break-words">{r.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Actions */}
+      <FieldActions
+        status={st}
+        hasRemarks={review.remarks.length > 0}
+        onRequestChanges={onRequestChanges}
+        onResolve={onResolve}
+        onResubmit={onResubmit}
+      />
     </div>
   );
 }
 
-function FieldNotePopover({
-  label, note, onSave,
-}: { label: string; note?: string; onSave: (v: string) => void }) {
-  const [draft, setDraft] = useState(note ?? "");
+function FieldActions({
+  status, hasRemarks, onRequestChanges, onResolve, onResubmit,
+}: {
+  status: ReviewStatus;
+  hasRemarks: boolean;
+  onRequestChanges: (text: string) => void;
+  onResolve: () => void;
+  onResubmit: () => void;
+}) {
+  return (
+    <div className="mt-3 pt-3 border-t border-dashed flex items-center justify-end gap-1.5 flex-wrap">
+      {status === "changes_requested" && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-[11px] text-info hover:text-info"
+          onClick={onResubmit}
+        >
+          <RefreshCw className="mr-1 h-3 w-3" /> Simulate resubmit
+        </Button>
+      )}
+
+      {status !== "approved" && (
+        <RequestChangesPopover
+          mode={status === "changes_requested" ? "again" : "first"}
+          onSubmit={onRequestChanges}
+        />
+      )}
+
+      {status === "approved" ? (
+        <Badge variant="outline" className="border-success/40 text-success bg-success/10 h-7">
+          <CheckCircle2 className="mr-1 h-3 w-3" /> Approved
+        </Badge>
+      ) : (
+        <Button
+          size="sm"
+          className="h-7 text-[11px] gradient-primary text-primary-foreground"
+          onClick={onResolve}
+        >
+          <CheckCircle2 className="mr-1 h-3 w-3" />
+          {hasRemarks ? "Resolve & Approve" : "Approve"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function RequestChangesPopover({
+  mode, onSubmit,
+}: { mode: "first" | "again"; onSubmit: (text: string) => void }) {
+  const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
   return (
-    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (v) setDraft(note ?? ""); }}>
+    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setDraft(""); }}>
       <PopoverTrigger asChild>
         <Button
-          variant={note ? "secondary" : "ghost"}
+          variant="outline"
           size="sm"
-          className={cn("h-7 gap-1", note && "text-primary")}
+          className={cn(
+            "h-7 text-[11px]",
+            mode === "again" && "border-warning/40 text-warning hover:text-warning",
+          )}
         >
-          <MessageSquarePlus className="h-3.5 w-3.5" />
-          {note ? "Review" : "Add review"}
+          <MessageSquarePlus className="mr-1 h-3 w-3" />
+          {mode === "again" ? "Request again" : "Request changes"}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72">
+      <PopoverContent align="end" className="w-80">
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
+          <p className="text-xs font-medium">
+            {mode === "again" ? "Send another change request" : "Tell the merchant what to fix"}
+          </p>
           <Textarea
             rows={3}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Write a review note for this field…"
+            placeholder="e.g. The legal name on the GST certificate doesn't match. Please re-upload."
           />
           <div className="flex justify-end gap-1.5">
-            {note && (
-              <Button variant="ghost" size="sm" onClick={() => { onSave(""); setOpen(false); }}>
-                Clear
-              </Button>
-            )}
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
             <Button
               size="sm"
               className="gradient-primary text-primary-foreground"
-              onClick={() => { onSave(draft.trim()); setOpen(false); toast.success("Review note saved"); }}
+              disabled={!draft.trim()}
+              onClick={() => { onSubmit(draft); setOpen(false); setDraft(""); }}
             >
-              Save
+              <Send className="mr-1.5 h-3 w-3" /> Send to merchant
             </Button>
           </div>
         </div>
@@ -760,100 +683,135 @@ function FieldNotePopover({
   );
 }
 
-function ReviewableField({
-  fieldKey, label, value, note, onSaveNote, error,
-}: { fieldKey: string; label: string; value: string; note?: string; onSaveNote: (v: string) => void; error?: BackendError }) {
+// ============================================================================
+// Documents
+// ============================================================================
+
+function DocumentRow({
+  name, date, fieldKey, review, error,
+  onRequestChanges, onResolve, onResubmit,
+}: {
+  name: string;
+  date: string;
+  fieldKey: string;
+  review: FieldReview;
+  error?: BackendError;
+  onRequestChanges: (text: string) => void;
+  onResolve: () => void;
+  onResubmit: () => void;
+}) {
   const isError = error?.severity === "error";
   const isWarn = error?.severity === "warning";
+  const st = review.status;
+
   return (
     <div className={cn(
-      "rounded-md border bg-card/50 p-3 transition-colors",
-      note && "border-primary/40 bg-primary/5",
-      isError && "border-destructive/50 bg-destructive/5",
-      isWarn && "border-warning/50 bg-warning/5",
+      "rounded-xl border p-3.5 bg-card transition-all",
+      st === "changes_requested" && "border-warning/40 bg-warning/5",
+      st === "approved" && "border-success/40 bg-success/5",
+      isError && st === "under_review" && "border-destructive/40 bg-destructive/5",
+      isWarn && st === "under_review" && "border-warning/40 bg-warning/5",
     )}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className={cn(
-            "text-sm font-medium mt-1 break-words",
-            isError && "text-destructive",
-          )}>{value}</p>
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <FileText className="h-4 w-4" />
         </div>
-        <FieldNotePopover label={label} note={note} onSave={onSaveNote} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate flex items-center gap-2">
+            {name}
+            {review.submissionRound > 1 && (
+              <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-info/40 text-info">
+                v{review.submissionRound}
+              </Badge>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground">Uploaded {date}</p>
+        </div>
+        <ReviewPill status={st} size="xs" />
+        <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button>
       </div>
-      {error && (
+
+      {error && st !== "approved" && (
         <div className={cn(
-          "mt-2 rounded-md border p-2 flex gap-2",
+          "mt-2.5 ml-12 rounded-lg border p-2 flex gap-2",
           isError ? "border-destructive/40 bg-destructive/10" : "border-warning/40 bg-warning/10",
         )}>
-          <AlertCircle className={cn(
-            "h-3.5 w-3.5 mt-0.5 shrink-0",
-            isError ? "text-destructive" : "text-warning",
-          )} />
+          <AlertCircle className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", isError ? "text-destructive" : "text-warning")} />
           <div className="min-w-0">
-            <p className={cn(
-              "text-[11px] font-semibold flex items-center gap-1.5 flex-wrap",
-              isError ? "text-destructive" : "text-warning",
-            )}>
+            <p className={cn("text-[11px] font-semibold", isError ? "text-destructive" : "text-warning")}>
               {error.code}
-              {error.source && (
-                <span className="font-normal text-muted-foreground">· {error.source}</span>
-              )}
+              {error.source && <span className="font-normal text-muted-foreground"> · {error.source}</span>}
             </p>
             <p className="text-xs text-foreground mt-0.5 break-words">{error.message}</p>
           </div>
         </div>
       )}
-      {note && (
-        <div className="mt-2 rounded-md bg-background/60 border border-dashed border-primary/30 p-2">
-          <p className="text-[11px] text-primary font-medium flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" /> Reviewer note
-          </p>
-          <p className="text-xs text-foreground mt-0.5 break-words">{note}</p>
+
+      {review.remarks.length > 0 && (
+        <div className="mt-3 ml-12 space-y-1.5">
+          {review.remarks.map((r) => (
+            <div key={r.id} className={cn(
+              "rounded-lg border p-2 text-xs",
+              r.resolved ? "border-success/30 bg-success/5 opacity-70"
+                : r.author === "Merchant" ? "border-info/30 bg-info/5"
+                : "border-warning/30 bg-warning/5"
+            )}>
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="font-medium text-foreground">{r.author}</span>
+                <span>·</span>
+                <Clock className="h-3 w-3" /> {r.ts}
+              </div>
+              <p className="text-foreground mt-1 break-words">{r.text}</p>
+            </div>
+          ))}
         </div>
       )}
+
+      <FieldActions
+        status={st}
+        hasRemarks={review.remarks.length > 0}
+        onRequestChanges={onRequestChanges}
+        onResolve={onResolve}
+        onResubmit={onResubmit}
+      />
     </div>
   );
 }
 
-function SectionActions({
-  decision, onDecide,
-}: { decision: "approved" | "rejected" | null; onDecide: (d: "approved" | "rejected") => void }) {
+// ============================================================================
+// Section footer + helpers
+// ============================================================================
+
+function SectionFooter({
+  status, fieldCount, approvedCount, changesCount, onSendChanges,
+}: {
+  status: ReviewStatus;
+  fieldCount: number;
+  approvedCount: number;
+  changesCount: number;
+  onSendChanges: () => void;
+}) {
   return (
-    <div className="border-t px-6 py-3 flex items-center justify-between gap-3 bg-muted/20">
-      <div className="text-xs text-muted-foreground">
-        {decision === "approved" && (
+    <div className="border-t px-5 py-3 flex items-center justify-between gap-3 bg-muted/20 flex-wrap">
+      <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+        <ReviewPill status={status} />
+        <span>
+          {approvedCount}/{fieldCount} approved
+          {changesCount > 0 && ` · ${changesCount} pending changes`}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        {changesCount > 0 && (
+          <Button size="sm" variant="outline" onClick={onSendChanges} className="border-warning/40 text-warning">
+            <Send className="mr-1.5 h-3.5 w-3.5" /> Send changes to merchant
+          </Button>
+        )}
+        {status === "approved" && (
           <Badge variant="outline" className="border-success/40 text-success bg-success/10">
             <CheckCircle2 className="mr-1 h-3 w-3" /> Section approved
           </Badge>
         )}
-        {decision === "rejected" && (
-          <Badge variant="outline" className="border-destructive/40 text-destructive bg-destructive/10">
-            <XCircle className="mr-1 h-3 w-3" /> Section rejected
-          </Badge>
-        )}
-        {!decision && <span>Decide on this section once you've added any review notes.</span>}
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onDecide("rejected")}
-          className={cn(decision === "rejected" && "border-destructive text-destructive")}
-        >
-          <XCircle className="mr-1.5 h-3.5 w-3.5" /> Reject section
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => onDecide("approved")}
-          className={cn(
-            "gradient-primary text-primary-foreground",
-            decision === "approved" && "ring-2 ring-success/40"
-          )}
-        >
-          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Approve section
-        </Button>
       </div>
     </div>
   );
@@ -870,37 +828,17 @@ function SectionErrorSummary({ section }: { section: SectionKey }) {
       "rounded-lg border p-3 flex items-start gap-3",
       errors > 0 ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5",
     )}>
-      <AlertCircle className={cn(
-        "h-4 w-4 mt-0.5 shrink-0",
-        errors > 0 ? "text-destructive" : "text-warning",
-      )} />
+      <AlertCircle className={cn("h-4 w-4 mt-0.5 shrink-0", errors > 0 ? "text-destructive" : "text-warning")} />
       <div className="flex-1 min-w-0">
-        <p className={cn(
-          "text-sm font-medium",
-          errors > 0 ? "text-destructive" : "text-warning",
-        )}>
+        <p className={cn("text-sm font-medium", errors > 0 ? "text-destructive" : "text-warning")}>
           {errors > 0 && `${errors} backend error${errors > 1 ? "s" : ""}`}
           {errors > 0 && warns > 0 && " · "}
           {warns > 0 && `${warns} warning${warns > 1 ? "s" : ""}`}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Issues returned from verification APIs — see highlighted fields below.
+          Issues returned from verification APIs — request changes inline below.
         </p>
-      </div>
-      <div className="flex gap-1.5">
-        {errors > 0 && (
-          <Badge variant="outline" className="border-destructive/40 text-destructive bg-destructive/10">
-            {errors} error
-          </Badge>
-        )}
-        {warns > 0 && (
-          <Badge variant="outline" className="border-warning/40 text-warning bg-warning/10">
-            {warns} warning
-          </Badge>
-        )}
       </div>
     </div>
   );
 }
-
-
