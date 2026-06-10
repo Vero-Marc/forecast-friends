@@ -347,6 +347,7 @@ export default function ReviewOrganization() {
                       value={r.value}
                       note={fieldNotes[`kyb:${r.label}`]}
                       onSaveNote={(v) => setFieldNote(`kyb:${r.label}`, v)}
+                      error={backendErrors[`kyb:${r.label}`]}
                     />
                   </div>
                 ))}
