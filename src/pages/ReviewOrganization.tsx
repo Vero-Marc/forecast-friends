@@ -315,6 +315,7 @@ export default function ReviewOrganization() {
                     value={r.value}
                     note={fieldNotes[`overview:${r.label}`]}
                     onSaveNote={(v) => setFieldNote(`overview:${r.label}`, v)}
+                    error={backendErrors[`overview:${r.label}`]}
                   />
                 ))}
               </CardContent>
