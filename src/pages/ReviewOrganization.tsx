@@ -724,20 +724,50 @@ function FieldNotePopover({
 }
 
 function ReviewableField({
-  fieldKey, label, value, note, onSaveNote,
-}: { fieldKey: string; label: string; value: string; note?: string; onSaveNote: (v: string) => void }) {
+  fieldKey, label, value, note, onSaveNote, error,
+}: { fieldKey: string; label: string; value: string; note?: string; onSaveNote: (v: string) => void; error?: BackendError }) {
+  const isError = error?.severity === "error";
+  const isWarn = error?.severity === "warning";
   return (
     <div className={cn(
       "rounded-md border bg-card/50 p-3 transition-colors",
-      note && "border-primary/40 bg-primary/5"
+      note && "border-primary/40 bg-primary/5",
+      isError && "border-destructive/50 bg-destructive/5",
+      isWarn && "border-warning/50 bg-warning/5",
     )}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className="text-sm font-medium mt-1 break-words">{value}</p>
+          <p className={cn(
+            "text-sm font-medium mt-1 break-words",
+            isError && "text-destructive",
+          )}>{value}</p>
         </div>
         <FieldNotePopover label={label} note={note} onSave={onSaveNote} />
       </div>
+      {error && (
+        <div className={cn(
+          "mt-2 rounded-md border p-2 flex gap-2",
+          isError ? "border-destructive/40 bg-destructive/10" : "border-warning/40 bg-warning/10",
+        )}>
+          <AlertCircle className={cn(
+            "h-3.5 w-3.5 mt-0.5 shrink-0",
+            isError ? "text-destructive" : "text-warning",
+          )} />
+          <div className="min-w-0">
+            <p className={cn(
+              "text-[11px] font-semibold flex items-center gap-1.5 flex-wrap",
+              isError ? "text-destructive" : "text-warning",
+            )}>
+              {error.code}
+              {error.source && (
+                <span className="font-normal text-muted-foreground">· {error.source}</span>
+              )}
+            </p>
+            <p className="text-xs text-foreground mt-0.5 break-words">{error.message}</p>
+          </div>
+        </div>
+      )}
       {note && (
         <div className="mt-2 rounded-md bg-background/60 border border-dashed border-primary/30 p-2">
           <p className="text-[11px] text-primary font-medium flex items-center gap-1">
