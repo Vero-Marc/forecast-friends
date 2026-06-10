@@ -105,7 +105,7 @@ function ReviewPill({ status, size = "sm" }: { status: ReviewStatus; size?: "xs"
       m.tone,
       size === "xs" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-0.5 text-[11px]",
     )}>
-      <Icon className={cn("h-3 w-3", status === "under_review" && "animate-spin-slow")} />
+      <Icon className={cn("h-3 w-3", status === "under_review" && "animate-pulse")} />
       {m.label}
     </span>
   );
