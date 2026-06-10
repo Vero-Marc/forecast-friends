@@ -397,29 +397,61 @@ export default function ReviewOrganization() {
               <CardContent className="space-y-2">
                 {docs.map((f) => {
                   const k = `documents:${f.name}`;
+                  const err = backendErrors[k];
+                  const isError = err?.severity === "error";
+                  const isWarn = err?.severity === "warning";
                   return (
                     <div
                       key={f.name}
-                      className="flex items-center gap-3 rounded-lg border p-3 bg-card hover:bg-muted/30 transition-colors"
+                      className={cn(
+                        "rounded-lg border p-3 bg-card hover:bg-muted/30 transition-colors",
+                        isError && "border-destructive/50 bg-destructive/5",
+                        isWarn && "border-warning/50 bg-warning/5",
+                      )}
                     >
-                      <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                        <FileText className="h-4 w-4" />
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{f.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Uploaded {f.date}
+                            {fieldNotes[k] && <span className="ml-2 text-primary">· Review note added</span>}
+                          </p>
+                        </div>
+                        <StatusBadge status={f.status as any} />
+                        <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
+                        <FieldNotePopover
+                          label={f.name}
+                          note={fieldNotes[k]}
+                          onSave={(v) => setFieldNote(k, v)}
+                        />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{f.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Uploaded {f.date}
-                          {fieldNotes[k] && <span className="ml-2 text-primary">· Review note added</span>}
-                        </p>
-                      </div>
-                      <StatusBadge status={f.status as any} />
-                      <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
-                      <FieldNotePopover
-                        label={f.name}
-                        note={fieldNotes[k]}
-                        onSave={(v) => setFieldNote(k, v)}
-                      />
+                      {err && (
+                        <div className={cn(
+                          "mt-2 ml-12 rounded-md border p-2 flex gap-2",
+                          isError ? "border-destructive/40 bg-destructive/10" : "border-warning/40 bg-warning/10",
+                        )}>
+                          <AlertCircle className={cn(
+                            "h-3.5 w-3.5 mt-0.5 shrink-0",
+                            isError ? "text-destructive" : "text-warning",
+                          )} />
+                          <div className="min-w-0">
+                            <p className={cn(
+                              "text-[11px] font-semibold flex items-center gap-1.5 flex-wrap",
+                              isError ? "text-destructive" : "text-warning",
+                            )}>
+                              {err.code}
+                              {err.source && (
+                                <span className="font-normal text-muted-foreground">· {err.source}</span>
+                              )}
+                            </p>
+                            <p className="text-xs text-foreground mt-0.5 break-words">{err.message}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
